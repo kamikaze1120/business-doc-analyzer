@@ -201,6 +201,12 @@ input[type=search]{min-width:230px}
 .graph-legend span{display:inline-flex;align-items:center;gap:5px}
 .graph-legend i{width:9px;height:9px;border-radius:50%;display:inline-block}
 .graph-hint{position:absolute;bottom:10px;right:12px;font-size:11px}
+.graph-controls{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:2px 2px 12px}
+.gfilter{background:var(--panel2);border:1px solid var(--line);color:var(--dim);border-radius:99px;padding:4px 10px;font-size:11px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;font-family:inherit}
+.gfilter.on{color:var(--txt);border-color:var(--accent)}
+.gfilter i{width:8px;height:8px;border-radius:50%;display:inline-block;opacity:.35}
+.gfilter.on i{opacity:1}
+.graph-controls select{max-width:230px}
 /* --- connections --- */
 .conn-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:7px 0;border-bottom:1px solid var(--line)}
 .conn-row:last-child{border-bottom:0}
@@ -320,6 +326,7 @@ input[type=search]{min-width:230px}
 <script src="js/compose.js"></script>
 
 <!-- UI -->
+<script src="js/flow.js"></script>
 <script src="js/render.js"></script>
 <script src="js/knowledge.js"></script>
 <script src="js/ai.js"></script>

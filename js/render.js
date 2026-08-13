@@ -163,21 +163,11 @@ function renderFlow(){
   const s=STATE;
   if(!s.steps.length){ E('p-flow').innerHTML=emptyMsg('No sequential process steps detected. Add numbered steps (1. 2. 3.) or action-verb statements.'); return; }
   const lanes={}; s.steps.forEach(st=>{ (lanes[st.lane]=lanes[st.lane]||[]).push(st); });
+  const handoffs=s.steps.filter((x,i)=>i>0 && s.steps[i-1].lane!==x.lane).length;
   E('p-flow').innerHTML=`
-  <div class="toolbar"><span class="dim">Swimlane view · ${s.steps.length} steps · ${Object.keys(lanes).length} lanes · ${s.steps.filter(x=>x.decision).length} decision points</span></div>
-  <div class="flowwrap">
-    ${Object.entries(lanes).map(([lane,st])=>`
-      <div class="lane">
-        <div class="lane-h">${esc(lane)} <span class="dim" style="font-weight:400;text-transform:none">(${st.length})</span></div>
-        <div class="steps">${st.map((x,i)=>`
-          ${i?'<div class="arrow">→</div>':''}
-          <div class="step ${x.decision?'decision':''}">
-            <div class="n">${x.decision?'◆ DECISION ':'STEP '}${x.n}</div>
-            ${esc(x.text)}
-            ${x.reqId?`<div class="dim mono" style="margin-top:6px;font-size:10px">${esc(x.reqId)}</div>`:''}
-          </div>`).join('')}</div>
-      </div>`).join('')}
-  </div>
+  <div class="toolbar"><span class="dim">Persona swimlanes · ${s.steps.length} steps · ${Object.keys(lanes).length} actors · ${handoffs} hand-off${handoffs===1?'':'s'} · ${s.steps.filter(x=>x.decision).length} decision points</span></div>
+  <div class="flowwrap" id="swimlane" style="overflow:auto"></div>
+  <div class="dim" style="font-size:11px;margin-top:6px"><span style="color:var(--accent)">━▸</span> hand-off between actors · <span style="color:var(--dim)">━▸</span> same actor · <span style="color:var(--warn)">◆</span> decision</div>
   <h3 class="sec">Linear sequence</h3>
   <div class="card" style="padding:0"><div class="tablewrap" style="max-height:50vh">
     <table><colgroup><col style="width:52px"><col style="width:130px"><col style="width:88px"><col><col style="width:96px"></colgroup>
@@ -187,6 +177,19 @@ function renderFlow(){
       <td>${x.decision?'<span class="tag p-Medium">Decision</span>':'<span class="tag p-Low">Task</span>'}</td>
       <td class="wrap">${esc(x.full)}</td><td class="mono dim">${esc(x.reqId||'—')}</td></tr>`).join('')}</tbody></table>
   </div></div>`;
+  try{ renderSwimlaneSVG(E('swimlane'), s.steps); }catch(e){ console.error('swimlane failed',e); }
+}
+
+/* ---------------- GLOSSARY ---------------- */
+function renderGlossary(){
+  const g=STATE.el.glossary||[];
+  E('p-glossary').innerHTML = `
+  <div class="toolbar"><span class="dim">${g.length} term${g.length===1?'':'s'} & acronym${g.length===1?'':'s'} detected${(typeof Store!=='undefined'&&Store.available())?' · shared terms cross-reference in the brain':''}</span></div>
+  ${g.length?`<div class="card" style="padding:0"><div class="tablewrap">
+    <table><colgroup><col style="width:180px"><col></colgroup>
+    <thead><tr><th>Term</th><th>Definition</th></tr></thead>
+    <tbody>${g.map(t=>`<tr><td class="wrap"><strong>${esc(t.term)}</strong></td><td class="wrap dim">${esc(t.definition||'—')}</td></tr>`).join('')}</tbody></table>
+  </div></div>`:emptyMsg('No glossary terms or acronyms detected.')}`;
 }
 
 /* ---------------- E2E SCENARIOS ---------------- */
@@ -459,5 +462,6 @@ const VIEWS = {
   metrics:      {label:'Metrics & KPIs',      render:renderMetrics,      has:s=>s.el.metrics.length>0},
   stories:      {label:'User Stories',        render:renderStories,      has:s=>s.el.stories.length>0},
   actions:      {label:'Actions & Decisions', render:renderActions,      has:s=>s.el.actions.length+s.el.questions.length>0},
+  glossary:     {label:'📖 Glossary',          render:renderGlossary,     has:s=>(s.el.glossary||[]).length>0},
   gaps:         {label:'Quality & Gaps',      render:renderGaps,         has:()=>true}
 };

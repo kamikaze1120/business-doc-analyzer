@@ -59,6 +59,8 @@ function activeTabIds(){
   if(!ids.includes('overview')) ids.unshift('overview');
   // Connections (how this doc relates to the brain) sits right after Overview.
   if(VIEWS.connections && VIEWS.connections.has(STATE) && !ids.includes('connections')) ids.splice(1,0,'connections');
+  // Glossary appears when the document defines terms/acronyms.
+  if(VIEWS.glossary && VIEWS.glossary.has(STATE) && !ids.includes('glossary')) ids.push('glossary');
   // Clarify (living-document Q&A) sits just before Quality & Gaps on every document.
   if(VIEWS.clarify && !ids.includes('clarify')) ids.push('clarify');
   if(!ids.includes('gaps')) ids.push('gaps');

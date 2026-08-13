@@ -23,8 +23,8 @@ const Store = (()=>{
   /* ---- helpers (mirror the former server) ---- */
   function slug(s){ return String(s||'').toLowerCase().normalize('NFKD').replace(/[^\w\s-]/g,'')
     .trim().replace(/\s+/g,'-').replace(/-+/g,'-').slice(0,80) || 'untitled'; }
-  const CROSS = {stakeholder:1, actor:1, system:1, metric:1};
-  const ENTITY_LABEL = {stakeholder:'Stakeholders', actor:'Actors', system:'Systems / Integrations', metric:'Metrics / KPIs'};
+  const CROSS = {stakeholder:1, actor:1, system:1, metric:1, term:1};
+  const ENTITY_LABEL = {stakeholder:'Stakeholders', actor:'Actors', system:'Systems / Integrations', metric:'Metrics / KPIs', term:'Glossary / Terms'};
   function nid(type,name){ return type+':'+slug(name); }
   function upsert(ix, type, name, props, docId){
     const id=nid(type,name);
@@ -53,6 +53,7 @@ const Store = (()=>{
     sec('Milestones', e.milestones, m=>`${m.label}${m.date?' ('+m.date+')':''}`);
     sec('Risks', e.risks, r=>`${r.sev?'('+r.sev+') ':''}${r.risk}${r.mitigation?' — mitigation: '+r.mitigation:''}`);
     sec('Metrics / KPIs', e.metrics, m=>`[[${m.name}]]${m.target?' — target: '+m.target:''}`);
+    sec('Glossary / Terms', e.glossary, g=>`[[${g.term}]]${g.definition?' — '+g.definition:''}`);
     sec('Personas', e.personas, p=>`${p.name}${p.desc?' — '+p.desc:''}`);
     sec('Features', e.features, f=>`${f.name||f}`);
     sec('User Stories', e.stories, s=>`As a ${s.role}, I want ${s.want}${s.benefit?' so that '+s.benefit:''}`);
@@ -65,7 +66,7 @@ const Store = (()=>{
     const back=node.docs.map(d=>{ const dn=ix.docs[d]; return dn?`- [[${dn.title}]]`:null; }).filter(Boolean);
     db.notes['entities/'+node.type+'/'+slug(node.title)] =
       fm({type:node.type, name:node.title, appears_in:node.docs.length})+
-      `# ${node.title}\n\n**Type:** ${node.type}\n\n## Appears in\n`+(back.join('\n')||'- (none)')+'\n';
+      `# ${node.title}\n\n**Type:** ${node.type}\n`+(node.props&&node.props.definition?`\n> ${node.props.definition}\n`:'')+`\n## Appears in\n`+(back.join('\n')||'- (none)')+'\n';
   }
 
   /* ---- public API (same shapes the UI already expects) ---- */
@@ -73,13 +74,14 @@ const Store = (()=>{
     load();
     const ix=db.index, doc=payload.doc||{}, e=payload.entities||{};
     const title=doc.title||doc.fileName||'Untitled', docId=slug(title);
-    const counts={}; ['objectives','stakeholders','actors','systems','risks','metrics','milestones','features','personas','stories','requirements','questions','scopeIn','scopeOut'].forEach(k=>counts[k]=(e[k]||[]).length);
+    const counts={}; ['objectives','stakeholders','actors','systems','risks','metrics','milestones','features','personas','stories','requirements','questions','scopeIn','scopeOut','glossary'].forEach(k=>counts[k]=(e[k]||[]).length);
     ix.docs[docId]={id:docId, title, file:doc.fileName, docType:doc.type, docTypeName:doc.typeName, confidence:doc.confidence, words:doc.words, ingested:new Date().toISOString(), counts};
     const touched=new Set();
     (e.stakeholders||[]).forEach(s=>{ const n=upsert(ix,'stakeholder',s.role,{},docId); edge(ix,docId,n.id,'mentions'); touched.add(n.id); });
     (e.actors||[]).forEach(a=>{ const n=upsert(ix,'actor',a,{},docId); edge(ix,docId,n.id,'mentions'); touched.add(n.id); });
     (e.systems||[]).forEach(s=>{ const n=upsert(ix,'system',s,{},docId); edge(ix,docId,n.id,'mentions'); touched.add(n.id); });
     (e.metrics||[]).forEach(m=>{ const n=upsert(ix,'metric',m.name,{target:m.target||''},docId); edge(ix,docId,n.id,'mentions'); touched.add(n.id); });
+    (e.glossary||[]).forEach(g=>{ const n=upsert(ix,'term',g.term,{definition:g.definition||''},docId); edge(ix,docId,n.id,'mentions'); touched.add(n.id); });
     const ids=[...touched];
     for(let i=0;i<ids.length;i++) for(let j=i+1;j<ids.length;j++) edge(ix,ids[i],ids[j],'co-occurs');
     // keep the full structured entities so we can COMPOSE documents from the brain later

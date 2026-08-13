@@ -316,6 +316,38 @@ function extractActionItems(lines, sections){
 }
 
 /* =================================================================
+   GLOSSARY / TERMS & ACRONYMS
+   ================================================================= */
+function extractGlossary(lines, sections){
+  const out=new Map();
+  const add=(term, def)=>{ term=_sentence(term).replace(/[.:;,]+$/,''); def=_sentence(def||'');
+    if(!term || term.length<2 || term.length>60) return;
+    const words=term.split(/\s+/);
+    // reject sentence-fragments captured as "terms" (keep real names/acronyms)
+    if(words.length>4) return;
+    if(words.length>1 && /\b(and|or|is|are|was|were|the|a|an|of|to|will|shall|must|with|for|that|this|by|as)\b/i.test(term) && !/^[A-Z]{2,6}$/.test(term)) return;
+    if(/^(the|this|that|these|those|and|for|with)$/i.test(term)) return;
+    const k=term.toLowerCase();
+    if(!out.has(k) || (def && !out.get(k).definition)) out.set(k, {term, definition:def}); };
+  const text=lines.join('\n'); let m;
+  // "Full Name (ACR)"  and  "ACR (Full Name)"
+  const re1=/\b([A-Z][A-Za-z0-9]+(?:\s+[A-Za-z][A-Za-z0-9]+){0,5})\s+\(([A-Z]{2,6}s?)\)/g;
+  while((m=re1.exec(text))) add(m[2], m[1]);
+  const re2=/\b([A-Z]{2,6})\s+\(([A-Z][A-Za-z0-9 ,'&\/-]{3,60})\)/g;
+  while((m=re2.exec(text))) add(m[1], m[2]);
+  // A dedicated glossary/definitions/acronyms section: "Term — definition"
+  _linesUnder(sections,lines,/\b(glossary|definitions?|terminology|terms?|acronyms?|abbreviations?|nomenclature)\b/i,150).forEach(o=>{
+    const t=_stripBullet(o.text);
+    const mm=t.match(/^([A-Za-z][A-Za-z0-9 ._\/&+-]{1,50}?)\s*[:—–]\s+(.{3,300})$/) || t.match(/^([A-Z][A-Za-z0-9 ._\/&+-]{1,50}?)\s+-\s+(.{3,300})$/);
+    if(mm) add(mm[1], mm[2]);
+  });
+  // Inline "X means / is defined as / refers to / stands for Y"
+  const dre=/\b([A-Z][A-Za-z0-9 ]{2,40}?)\s+(?:means|is defined as|are defined as|refers to|stands for)\s+([^.]{4,200})[.\n]/g;
+  while((m=dre.exec(text))) add(m[1], m[2]);
+  return [...out.values()].slice(0,80);
+}
+
+/* =================================================================
    MASTER — run every extractor, return the element bundle
    ================================================================= */
 function extractElements(lines, sections){
@@ -338,6 +370,7 @@ function extractElements(lines, sections){
     metrics: extractMetrics(lines, sections),
     stories,
     actions: ai.actions,
-    questions: ai.questions
+    questions: ai.questions,
+    glossary: extractGlossary(lines, sections)
   };
 }

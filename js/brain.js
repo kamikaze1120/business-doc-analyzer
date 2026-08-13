@@ -58,6 +58,7 @@ function brainPayload(){
       personas: el.personas, features: el.features, stories: el.stories,
       requirements: s.reqs.map(r=>({id:r.id, cat:r.cat, priority:r.priority, text:r.text})),
       tests: s.tests.map(t=>({id:t.id, req:t.req, type:t.type, priority:t.priority, title:t.title})),
+      glossary: el.glossary,
       questions: el.questions
     }
   };

@@ -9,7 +9,8 @@ const ENTITY_META = {
   stakeholder:{icon:'👤', label:'Stakeholders'},
   actor:{icon:'🎭', label:'Actors'},
   system:{icon:'🔌', label:'Systems / Integrations'},
-  metric:{icon:'📈', label:'Metrics / KPIs'}
+  metric:{icon:'📈', label:'Metrics / KPIs'},
+  term:{icon:'📖', label:'Glossary / Terms'}
 };
 
 async function renderBrain(){

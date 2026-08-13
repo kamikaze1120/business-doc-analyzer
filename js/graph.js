@@ -8,9 +8,9 @@
    ============================================================ */
 
 const GRAPH_COLORS = {
-  document:'#5b8cff', stakeholder:'#00d3a7', actor:'#ffb020', system:'#b478ff', metric:'#3ddc97', _default:'#8d97b0'
+  document:'#5b8cff', stakeholder:'#00d3a7', actor:'#ffb020', system:'#b478ff', metric:'#3ddc97', term:'#ff8fb0', _default:'#8d97b0'
 };
-const GRAPH_ICON = {document:'📄', stakeholder:'👤', actor:'🎭', system:'🔌', metric:'📈'};
+const GRAPH_ICON = {document:'📄', stakeholder:'👤', actor:'🎭', system:'🔌', metric:'📈', term:'📖'};
 
 function buildGraphModel(ix){
   const nodes=[], byId={};
@@ -27,9 +27,52 @@ function buildGraphModel(ix){
   return {nodes, links, byId};
 }
 
+/* Controls (type filters + focus-on-document) wrap the force layout. */
 function renderGraphInto(host, ix){
-  const {nodes, links} = buildGraphModel(ix);
-  if(!nodes.length){ host.innerHTML = '<div class="empty">Add documents to the brain to see the graph.</div>'; return; }
+  const full = buildGraphModel(ix);
+  if(!full.nodes.length){ host.innerHTML = '<div class="empty">Add documents to the brain to see the graph.</div>'; return; }
+  const presentTypes = [...new Set(full.nodes.map(n=>n.ntype))];
+  const docList = full.nodes.filter(n=>n.kind==='document');
+  const state = { types:new Set(presentTypes), focus:'__all' };
+
+  host.innerHTML = `
+    <div class="graph-controls">
+      <span class="dim" style="font-size:11px">Show:</span>
+      ${presentTypes.map(t=>`<button class="gfilter on" data-t="${t}"><i style="background:${GRAPH_COLORS[t]||GRAPH_COLORS._default}"></i>${t}</button>`).join('')}
+      <span style="margin-left:auto"></span>
+      <span class="dim" style="font-size:11px">Focus:</span>
+      <select id="gfocus"><option value="__all">All documents</option>${docList.map(d=>`<option value="${d.id}">${(d.title||'').replace(/</g,'&lt;').slice(0,40)}</option>`).join('')}</select>
+    </div>
+    <div id="graph-canvas" style="position:relative"></div>`;
+
+  function filtered(){
+    let nodes = full.nodes.filter(n=>state.types.has(n.ntype));
+    if(state.focus!=='__all'){
+      const keep=new Set([state.focus]);
+      full.links.forEach(l=>{ if(l.source.id===state.focus) keep.add(l.target.id); if(l.target.id===state.focus) keep.add(l.source.id); });
+      // pull in other documents that share those entities
+      full.links.forEach(l=>{ if(keep.has(l.source.id)) keep.add(l.target.id); if(keep.has(l.target.id)) keep.add(l.source.id); });
+      nodes = nodes.filter(n=>keep.has(n.id));
+    }
+    const nset=new Set(nodes.map(n=>n.id));
+    const links = full.links.filter(l=>nset.has(l.source.id) && nset.has(l.target.id));
+    // reset dynamic state so the sim re-lays-out cleanly
+    nodes.forEach(n=>{ n.vx=0; n.vy=0; n.fx=null; n.fy=null; n.deg=0; });
+    links.forEach(l=>{ l.source.deg++; l.target.deg++; });
+    return {nodes, links};
+  }
+  function apply(){ try{ layoutGraph(E('graph-canvas'), filtered()); }catch(e){ console.error('graph layout failed',e); } }
+
+  host.querySelectorAll('.gfilter').forEach(b=>b.onclick=()=>{ const t=b.dataset.t;
+    if(state.types.has(t)) state.types.delete(t); else state.types.add(t);
+    b.classList.toggle('on'); apply(); });
+  E('gfocus').onchange=e=>{ state.focus=e.target.value; apply(); };
+  apply();
+}
+
+function layoutGraph(host, model){
+  const {nodes, links} = model;
+  if(!nodes.length){ host.innerHTML = '<div class="empty">Nothing to show with these filters.</div>'; return; }
 
   const W = host.clientWidth || 900, H = Math.max(460, Math.min(680, window.innerHeight-320));
   host.innerHTML =
