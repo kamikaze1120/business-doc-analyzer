@@ -85,6 +85,9 @@ async function ensureWebLLM(){
 }
 async function genWebLLM(prompt, opts){
   const eng = await ensureWebLLM();
+  // Generation itself emits no progress; tell the user we've moved past loading
+  // so a slow Intel GPU doesn't look frozen on the "Finish loading" message.
+  if(AI.onProgress) AI.onProgress('Model loaded ✓ — generating the answer… (on an Intel GPU this can take up to a minute)');
   const messages = [ ...(opts.system?[{role:'system',content:opts.system}]:[]), {role:'user',content:prompt} ];
   const req = { messages, temperature: opts.temperature!=null?opts.temperature:0.2 };
   if(opts.format==='json') req.response_format = {type:'json_object'};
