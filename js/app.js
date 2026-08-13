@@ -328,6 +328,8 @@ E('mode-brain').onclick=()=>setMode('brain');
 E('settings-btn').onclick=openSettings;
 E('settings-close').onclick=()=>E('settings').classList.add('hidden');
 E('settings').onclick=e=>{ if(e.target===E('settings')) E('settings').classList.add('hidden'); };
+E('compose-close').onclick=()=>E('compose').classList.add('hidden');
+E('compose').onclick=e=>{ if(e.target===E('compose')) E('compose').classList.add('hidden'); };
 wire();
 
 // Detect AI (on-device or configured cloud). Brain works regardless.

@@ -4,6 +4,7 @@
    ============================================================ */
 
 let BRAIN = null;                 // last-loaded index
+let BRAIN_VIEW = null;            // 'graph' | 'list' (chosen on first render)
 const ENTITY_META = {
   stakeholder:{icon:'👤', label:'Stakeholders'},
   actor:{icon:'🎭', label:'Actors'},
@@ -33,6 +34,7 @@ async function renderBrain(){
   }
 
   const byType = ix.stats.byType||{};
+  if(BRAIN_VIEW===null) BRAIN_VIEW = (ix.edges && ix.edges.length) ? 'graph' : 'list';
   host.innerHTML = `
   <div class="grid g4" style="margin-bottom:6px">
     <div class="card"><div class="kpi acc">${st.documents}</div><div class="klabel">Documents</div></div>
@@ -40,42 +42,59 @@ async function renderBrain(){
     <div class="card"><div class="kpi ${recurring.length?'ok':''}">${recurring.length}</div><div class="klabel">Cross-referenced</div></div>
     <div class="card"><div class="kpi">${(ix.edges||[]).length}</div><div class="klabel">Connections</div></div>
   </div>
-  <div class="toolbar"><input type="search" id="brainq" placeholder="Search the brain…"><span class="dim" id="braincount"></span></div>
-  <div class="brain-grid">
-    <div>
-      <h3 class="sec">Documents (${docs.length})</h3>
-      <div class="card" id="braindocs" style="padding:8px"></div>
-      ${recurring.length?`<h3 class="sec">Cross-referenced entities</h3>
-        <div class="card" id="brainrec" style="padding:8px"></div>`:''}
-      ${Object.keys(ENTITY_META).map(t=>byType[t]?`
-        <h3 class="sec">${ENTITY_META[t].icon} ${ENTITY_META[t].label} (${byType[t]})</h3>
-        <div class="card" id="brain-${t}" style="padding:8px"></div>`:'').join('')}
-    </div>
-    <div>
-      <h3 class="sec">Note</h3>
-      <div class="card" id="brainnote"><div class="dim">Select a document or entity to open its note.</div></div>
-    </div>
-  </div>`;
+  <div class="toolbar">
+    <div class="seg"><button id="bv-graph" class="${BRAIN_VIEW==='graph'?'on':''}">🕸 Graph</button><button id="bv-list" class="${BRAIN_VIEW==='list'?'on':''}">☰ List</button></div>
+    <button class="btn sm" id="brain-compose">＋ Compose document</button>
+    <span class="dim">${recurring.length} cross-referenced · ${(ix.edges||[]).length} links</span>
+  </div>
+  <div id="brain-body"></div>`;
 
-  const linkChip=(title,id,type)=>`<span class="node-chip" data-id="${esc(id)}" data-type="${esc(type)}">${esc(title)}</span>`;
-  const docChip=d=>`<span class="node-chip doc" data-id="${esc(d.id)}" data-type="document" title="${esc(d.file||'')}">
-      ${esc(d.title)} <span class="dim">· ${esc(d.docTypeName||d.docType||'')}</span></span>`;
-  const entChip=n=>`<span class="node-chip" data-id="${esc(n.id)}" data-type="${esc(n.type)}">
-      ${ENTITY_META[n.type]?ENTITY_META[n.type].icon:''} ${esc(n.title)} ${n.docs.length>1?`<span class="pill hot">${n.docs.length} docs</span>`:''}</span>`;
+  const seg=()=>{ E('bv-graph').classList.toggle('on',BRAIN_VIEW==='graph'); E('bv-list').classList.toggle('on',BRAIN_VIEW==='list'); };
+  E('bv-graph').onclick=()=>{ BRAIN_VIEW='graph'; seg(); drawBody(); };
+  E('bv-list').onclick =()=>{ BRAIN_VIEW='list';  seg(); drawBody(); };
+  const cb=E('brain-compose'); if(cb) cb.onclick=()=>{ if(typeof openCompose==='function') openCompose(); else toast('Compose is loading…'); };
 
-  const draw=(q='')=>{
-    q=q.toLowerCase();
-    const dm=docs.filter(d=>d.title.toLowerCase().includes(q));
-    E('braindocs').innerHTML = dm.map(docChip).join('') || '<span class="dim">No matches</span>';
-    if(E('brainrec')) E('brainrec').innerHTML = recurring.filter(n=>n.title.toLowerCase().includes(q)).map(entChip).join('')||'<span class="dim">No matches</span>';
-    Object.keys(ENTITY_META).forEach(t=>{ const el=E('brain-'+t); if(!el) return;
-      el.innerHTML = nodes.filter(n=>n.type===t && n.title.toLowerCase().includes(q)).map(entChip).join('')||'<span class="dim">No matches</span>'; });
-    const total = dm.length;
-    E('braincount').textContent = q?`${total} document match${total===1?'':'es'}`:'';
-  };
-  draw();
-  E('brainq').addEventListener('input', e=>draw(e.target.value));
-  host.querySelectorAll('.node-chip').forEach(bindChip);
+  function drawBody(){
+    const body=E('brain-body');
+    if(BRAIN_VIEW==='graph'){
+      body.innerHTML = `<div id="brain-graph" class="card" style="padding:6px;overflow:hidden"></div>
+        <h3 class="sec">Note</h3><div class="card" id="brainnote"><div class="dim">Click a node in the graph to open its note.</div></div>`;
+      try{ renderGraphInto(E('brain-graph'), ix); }catch(e){ console.error('graph render failed',e); E('brain-graph').innerHTML=emptyMsg('Graph could not be drawn.'); }
+      return;
+    }
+    // ---- list view ----
+    body.innerHTML = `
+    <div class="toolbar" style="top:0"><input type="search" id="brainq" placeholder="Search the brain…"><span class="dim" id="braincount"></span></div>
+    <div class="brain-grid">
+      <div>
+        <h3 class="sec">Documents (${docs.length})</h3>
+        <div class="card" id="braindocs" style="padding:8px"></div>
+        ${recurring.length?`<h3 class="sec">Cross-referenced entities</h3><div class="card" id="brainrec" style="padding:8px"></div>`:''}
+        ${Object.keys(ENTITY_META).map(t=>byType[t]?`<h3 class="sec">${ENTITY_META[t].icon} ${ENTITY_META[t].label} (${byType[t]})</h3><div class="card" id="brain-${t}" style="padding:8px"></div>`:'').join('')}
+      </div>
+      <div>
+        <h3 class="sec">Note</h3>
+        <div class="card" id="brainnote"><div class="dim">Select a document or entity to open its note.</div></div>
+      </div>
+    </div>`;
+    const docChip=d=>`<span class="node-chip doc" data-id="${esc(d.id)}" data-type="document" title="${esc(d.file||'')}">
+        ${esc(d.title)} <span class="dim">· ${esc(d.docTypeName||d.docType||'')}</span></span>`;
+    const entChip=n=>`<span class="node-chip" data-id="${esc(n.id)}" data-type="${esc(n.type)}">
+        ${ENTITY_META[n.type]?ENTITY_META[n.type].icon:''} ${esc(n.title)} ${n.docs.length>1?`<span class="pill hot">${n.docs.length} docs</span>`:''}</span>`;
+    const draw=(q='')=>{
+      q=q.toLowerCase();
+      const dm=docs.filter(d=>d.title.toLowerCase().includes(q));
+      E('braindocs').innerHTML = dm.map(docChip).join('') || '<span class="dim">No matches</span>';
+      if(E('brainrec')) E('brainrec').innerHTML = recurring.filter(n=>n.title.toLowerCase().includes(q)).map(entChip).join('')||'<span class="dim">No matches</span>';
+      Object.keys(ENTITY_META).forEach(t=>{ const el=E('brain-'+t); if(!el) return;
+        el.innerHTML = nodes.filter(n=>n.type===t && n.title.toLowerCase().includes(q)).map(entChip).join('')||'<span class="dim">No matches</span>'; });
+      E('braincount').textContent = q?`${dm.length} document match${dm.length===1?'':'es'}`:'';
+    };
+    draw();
+    E('brainq').addEventListener('input', e=>draw(e.target.value));
+    body.querySelectorAll('.node-chip').forEach(bindChip);
+  }
+  drawBody();
 }
 
 function bindChip(el){

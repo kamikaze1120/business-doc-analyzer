@@ -14,7 +14,8 @@ const Store = (()=>{
   function load(){
     if(db) return db;
     try{ db = JSON.parse(localStorage.getItem(KEY)) || null; }catch(e){ db=null; }
-    if(!db) db = { index:{version:1, updated:null, docs:{}, nodes:{}, edges:[]}, notes:{}, clar:{} };
+    if(!db) db = { index:{version:1, updated:null, docs:{}, nodes:{}, edges:[]}, notes:{}, clar:{}, data:{} };
+    if(!db.data) db.data={};
     return db;
   }
   function save(){ try{ localStorage.setItem(KEY, JSON.stringify(db)); return true; }catch(e){ console.warn('brain save failed (storage full or blocked)',e); return false; } }
@@ -81,6 +82,8 @@ const Store = (()=>{
     (e.metrics||[]).forEach(m=>{ const n=upsert(ix,'metric',m.name,{target:m.target||''},docId); edge(ix,docId,n.id,'mentions'); touched.add(n.id); });
     const ids=[...touched];
     for(let i=0;i<ids.length;i++) for(let j=i+1;j<ids.length;j++) edge(ix,ids[i],ids[j],'co-occurs');
+    // keep the full structured entities so we can COMPOSE documents from the brain later
+    db.data[docId] = e;
     writeDocNote(doc,e); ids.forEach(id=>writeEntityNote(ix, ix.nodes[id]));
     ix.updated=new Date().toISOString(); save();
     return {ok:true, docId, entities:ids.length,
@@ -126,5 +129,7 @@ const Store = (()=>{
   function clear(){ db=null; localStorage.removeItem(KEY); load(); }
   function available(){ try{ localStorage.setItem('bda:test','1'); localStorage.removeItem('bda:test'); return true; }catch(e){ return false; } }
 
-  return {ingest, index, note, saveAnswer, getDoc, saveAI, exportAll, importAll, clear, available, slug};
+  function data(){ load(); return db.data||{}; }         // {docId: entities} for compose
+  function docMeta(){ load(); return db.index.docs||{}; }
+  return {ingest, index, note, saveAnswer, getDoc, saveAI, exportAll, importAll, clear, available, slug, data, docMeta};
 })();

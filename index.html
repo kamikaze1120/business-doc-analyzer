@@ -192,6 +192,22 @@ input[type=search]{min-width:230px}
 .wikilink{color:var(--accent);cursor:pointer;border-bottom:1px dotted var(--accent)}
 .wikilink:hover{filter:brightness(1.2)}
 #brainnote code{background:var(--panel2);padding:1px 5px;border-radius:4px;font-family:var(--mono);font-size:11.5px}
+/* --- brain graph --- */
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{background:var(--panel2);color:var(--dim);border:0;padding:6px 13px;font-size:12.5px;cursor:pointer;font-family:inherit}
+.seg button.on{background:var(--accent);color:#fff}
+.graph-wrap{background:var(--panel);border:1px solid var(--line);border-radius:10px}
+.graph-legend{position:absolute;top:10px;left:12px;display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--dim)}
+.graph-legend span{display:inline-flex;align-items:center;gap:5px}
+.graph-legend i{width:9px;height:9px;border-radius:50%;display:inline-block}
+.graph-hint{position:absolute;bottom:10px;right:12px;font-size:11px}
+/* --- compose --- */
+.compose-doc{background:#fff;color:#111;border-radius:8px;padding:26px 30px;font-size:13px;line-height:1.6;max-height:60vh;overflow:auto}
+.compose-doc h1{font-size:20px;margin:0 0 4px}.compose-doc h2{font-size:15px;margin:18px 0 6px;border-bottom:1px solid #ddd;padding-bottom:3px}
+.compose-doc table{width:100%;border-collapse:collapse;margin:8px 0;table-layout:auto}
+.compose-doc th,.compose-doc td{border:1px solid #ccc;padding:6px 9px;text-align:left;font-size:12px;color:#111}
+.compose-doc th{background:#f0f0f0}
+.compose-doc ul{margin:6px 0;padding-left:20px}.compose-doc .muted{color:#666}
 /* --- clarify / Q&A --- */
 .qa-item{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:13px 15px;margin-bottom:10px}
 .qa-q{font-size:13px;font-weight:600;margin-bottom:9px;line-height:1.5}
@@ -261,6 +277,12 @@ input[type=search]{min-width:230px}
     <div class="modal-body" id="settings-body"></div>
   </div>
 </div>
+<div class="modal hidden" id="compose">
+  <div class="modal-box" style="width:min(820px,94vw)">
+    <div class="modal-h"><strong>Compose a document from the brain</strong><button class="btn ghost sm" id="compose-close">✕</button></div>
+    <div class="modal-body" id="compose-body"></div>
+  </div>
+</div>
 <div id="toast" class="toast hidden"></div>
 
 <!-- Document parsers -->
@@ -288,7 +310,9 @@ input[type=search]{min-width:230px}
 <script src="js/store.js"></script>
 <script src="js/llm.js"></script>
 <script src="js/brain.js"></script>
+<script src="js/graph.js"></script>
 <script src="js/brain_ui.js"></script>
+<script src="js/compose.js"></script>
 
 <!-- UI -->
 <script src="js/render.js"></script>
