@@ -201,6 +201,11 @@ input[type=search]{min-width:230px}
 .graph-legend span{display:inline-flex;align-items:center;gap:5px}
 .graph-legend i{width:9px;height:9px;border-radius:50%;display:inline-block}
 .graph-hint{position:absolute;bottom:10px;right:12px;font-size:11px}
+/* --- connections --- */
+.conn-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:7px 0;border-bottom:1px solid var(--line)}
+.conn-row:last-child{border-bottom:0}
+.conn-shared{display:flex;gap:5px;flex-wrap:wrap}
+.conn-shared .chip{font-size:11px}
 /* --- compose --- */
 .compose-doc{background:#fff;color:#111;border-radius:8px;padding:26px 30px;font-size:13px;line-height:1.6;max-height:60vh;overflow:auto}
 .compose-doc h1{font-size:20px;margin:0 0 4px}.compose-doc h2{font-size:15px;margin:18px 0 6px;border-bottom:1px solid #ddd;padding-bottom:3px}
@@ -316,6 +321,7 @@ input[type=search]{min-width:230px}
 
 <!-- UI -->
 <script src="js/render.js"></script>
+<script src="js/knowledge.js"></script>
 <script src="js/ai.js"></script>
 <script src="js/qa.js"></script>
 <script src="js/app.js"></script>
