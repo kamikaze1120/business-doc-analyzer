@@ -12,9 +12,11 @@
 const AI = { available:false, provider:'off', model:'', label:'AI off', builtin:false, cfg:{}, onProgress:null };
 
 /* Small open models that run entirely in the browser via WebLLM (WebGPU). */
+const WEBLLM_VERSION = '0.2.84';   // pinned so a future release can't break the app
 const WEBLLM_MODELS = [
-  {id:'Qwen2.5-1.5B-Instruct-q4f16_1-MLC', label:'Qwen2.5 1.5B (~1.2 GB) — fast'},
+  {id:'Qwen2.5-1.5B-Instruct-q4f16_1-MLC', label:'Qwen2.5 1.5B (~1.2 GB) — recommended'},
   {id:'Llama-3.2-1B-Instruct-q4f32_1-MLC', label:'Llama 3.2 1B (~1.2 GB) — fastest'},
+  {id:'Qwen2.5-0.5B-Instruct-q4f16_1-MLC', label:'Qwen2.5 0.5B (~0.9 GB) — tiny, weak machines'},
   {id:'Qwen2.5-3B-Instruct-q4f16_1-MLC',   label:'Qwen2.5 3B (~2.3 GB) — stronger'},
   {id:'Llama-3.2-3B-Instruct-q4f16_1-MLC', label:'Llama 3.2 3B (~2.3 GB) — stronger'},
   {id:'Phi-3.5-mini-instruct-q4f16_1-MLC', label:'Phi-3.5 mini (~2.2 GB)'}
@@ -73,7 +75,7 @@ async function ensureWebLLM(){
   const model = AI.cfg.model || WEBLLM_MODELS[0].id;
   if(_webllmEngine && _webllmLoadedModel===model) return _webllmEngine;
   let webllm;
-  try{ webllm = await import('https://esm.run/@mlc-ai/web-llm'); }
+  try{ webllm = await import('https://esm.run/@mlc-ai/web-llm@'+WEBLLM_VERSION); }
   catch(e){ throw new Error('Could not load the WebLLM library (network/CDN blocked). '+e.message); }
   _webllmEngine = await webllm.CreateMLCEngine(model, {
     initProgressCallback: p=>{ if(AI.onProgress) AI.onProgress(p && p.text ? p.text : ('Loading '+shortModel(model)+'…')); }
