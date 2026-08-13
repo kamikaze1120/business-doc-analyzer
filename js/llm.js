@@ -75,8 +75,8 @@ async function ensureWebLLM(){
   const model = AI.cfg.model || WEBLLM_MODELS[0].id;
   if(_webllmEngine && _webllmLoadedModel===model) return _webllmEngine;
   let webllm;
-  try{ webllm = await import('https://esm.sh/@mlc-ai/web-llm@'+WEBLLM_VERSION); }
-  catch(e){ throw new Error('Could not load the WebLLM library (network/CDN blocked). '+e.message); }
+  try{ webllm = await import('https://esm.run/@mlc-ai/web-llm@'+WEBLLM_VERSION); }
+  catch(e){ throw new Error('In-browser AI (WebLLM) could not start in this browser. This is common on managed/work machines. Use a company AI endpoint in Settings, or run the tool without AI. ['+e.message+']'); }
   let lastTick = Date.now();
   const cb = p=>{ lastTick=Date.now(); if(AI.onProgress) AI.onProgress(p && p.text ? p.text : ('Loading '+shortModel(model)+'…')); };
   // Switching models: reload on the existing engine instead of spawning a second one.
@@ -96,6 +96,9 @@ async function ensureWebLLM(){
     if(Date.now()-lastTick>120000) rej(new Error('The model did not load — its files are most likely blocked or throttled by your network (common on work laptops). Use a company AI endpoint in Settings, or run the tool without AI.'));
   }, 5000); });
   try{ _webllmEngine = await Promise.race([loadP, watchdog]); }
+  catch(e){ _webllmEngine=null; _webllmLoadedModel=null;
+    throw /stalled|did not load/i.test(e.message) ? e
+      : new Error('In-browser AI (WebLLM) failed to run in this browser — common on managed/work machines with restricted networks or older GPUs. Use a company AI endpoint in Settings, or run the tool without AI. ['+(e.message||e)+']'); }
   finally{ clearInterval(iv); }
   _webllmLoadedModel = model;
   return _webllmEngine;
