@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Business Document Analyzer — Local</title>
+<style>
+:root{
+  --bg:#0b0d12; --panel:#141824; --panel2:#1b2030; --line:#252c3f;
+  --txt:#e6e9f2; --dim:#8d97b0; --accent:#5b8cff; --accent2:#00d3a7;
+  --warn:#ffb020; --bad:#ff5c72; --ok:#3ddc97;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);
+  font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+header{padding:18px 24px;border-bottom:1px solid var(--line);
+  display:flex;align-items:center;gap:16px;background:var(--panel);
+  position:sticky;top:0;z-index:20}
+header h1{font-size:16px;margin:0;font-weight:650;letter-spacing:-.2px}
+header .sub{color:var(--dim);font-size:12px}
+.badge{margin-left:auto;font-size:11px;color:var(--accent2);
+  border:1px solid var(--accent2);padding:3px 9px;border-radius:99px}
+main{max-width:1400px;margin:0 auto;padding:24px}
+.drop{border:2px dashed var(--line);border-radius:14px;padding:44px 24px;
+  text-align:center;cursor:pointer;transition:.18s;background:var(--panel)}
+.drop:hover,.drop.over{border-color:var(--accent);background:var(--panel2)}
+.drop h2{margin:0 0 6px;font-size:16px}
+.drop p{margin:0;color:var(--dim);font-size:12px}
+.btn{background:var(--accent);color:#fff;border:0;padding:8px 16px;
+  border-radius:8px;font-size:13px;font-weight:600;cursor:pointer}
+.btn:hover{filter:brightness(1.1)}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--txt)}
+.btn.sm{padding:5px 11px;font-size:12px}
+.tabs{display:flex;gap:4px;margin:24px 0 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.tab{padding:10px 16px;cursor:pointer;color:var(--dim);font-size:13px;
+  border-bottom:2px solid transparent;font-weight:550}
+.tab.active{color:var(--txt);border-bottom-color:var(--accent)}
+.tab:hover{color:var(--txt)}
+.pane{display:none;padding:22px 0}
+.pane.active{display:block}
+.grid{display:grid;gap:14px}
+.g4{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
+.card.mini{padding:12px}
+.kpi{font-size:28px;font-weight:700;letter-spacing:-1px}
+.kpi.acc{color:var(--accent)}.kpi.ok{color:var(--ok)}
+.kpi.warn{color:var(--warn)}.kpi.bad{color:var(--bad)}
+.klabel{color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.6px;margin-top:4px}
+h3.sec{font-size:13px;text-transform:uppercase;letter-spacing:.8px;
+  color:var(--dim);margin:26px 0 12px;font-weight:650}
+/* --- type banner --- */
+.typecard{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.tc-icon{font-size:34px;line-height:1;flex:0 0 auto}
+.tc-main{flex:1 1 240px;min-width:0}
+.tc-label{color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.6px}
+.tc-name{font-size:17px;font-weight:700;margin:2px 0 8px}
+.tc-conf{display:flex;align-items:center;gap:10px}
+.tc-switch{flex:0 0 auto}
+.tc-switch select{min-width:220px}
+/* --- tags / chips --- */
+.tag{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:99px;
+  letter-spacing:.3px;border:1px solid transparent;white-space:nowrap;vertical-align:middle}
+.tag.t-FR{background:rgba(91,140,255,.14);color:#a9c2ff;border-color:rgba(91,140,255,.35)}
+.tag.t-NFR{background:rgba(0,211,167,.14);color:#7ff0d5;border-color:rgba(0,211,167,.35)}
+.tag.t-INT{background:rgba(180,120,255,.14);color:#d3b6ff;border-color:rgba(180,120,255,.35)}
+.tag.t-BR{background:rgba(255,176,32,.14);color:#ffcf7a;border-color:rgba(255,176,32,.35)}
+.tag.t-ASM{background:rgba(141,151,176,.16);color:#c2c9db;border-color:rgba(141,151,176,.35)}
+.tag.t-OI{background:rgba(255,92,114,.14);color:#ff9aa8;border-color:rgba(255,92,114,.35)}
+.tag.t-E2E{background:rgba(0,211,167,.14);color:#7ff0d5;border-color:rgba(0,211,167,.35)}
+.tag.p-High{background:rgba(255,92,114,.16);color:#ff9aa8;border-color:rgba(255,92,114,.4)}
+.tag.p-Medium{background:rgba(255,176,32,.16);color:#ffcf7a;border-color:rgba(255,176,32,.4)}
+.tag.p-Low{background:rgba(61,220,151,.16);color:#8ff0c4;border-color:rgba(61,220,151,.4)}
+/* --- tables --- */
+.tablewrap{overflow:auto;max-height:70vh;border-radius:12px;position:relative}
+table{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px;table-layout:fixed}
+th{text-align:left;padding:10px 12px;background:var(--panel2);color:var(--dim);
+  font-size:11px;text-transform:uppercase;letter-spacing:.5px;
+  border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+td{padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top;
+  overflow-wrap:anywhere;word-break:normal;hyphens:auto;line-height:1.5}
+td.wrap{white-space:normal}
+td.nowrap{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+tbody tr:hover td{background:var(--panel2)}
+tbody tr:last-child td{border-bottom:0}
+.mono{font-family:var(--mono);font-size:11.5px}
+/* --- details/summary --- */
+details{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+  padding:0;margin-bottom:10px;overflow:hidden}
+summary{cursor:pointer;font-weight:600;font-size:13px;padding:13px 16px;
+  display:flex;align-items:center;gap:9px;flex-wrap:wrap;list-style:none;line-height:1.5}
+summary::-webkit-details-marker{display:none}
+summary::before{content:'▸';color:var(--dim);flex:0 0 auto;transition:.15s}
+details[open] summary::before{transform:rotate(90deg)}
+summary .stitle{flex:1 1 260px;min-width:0;overflow-wrap:anywhere}
+details[open] summary{border-bottom:1px solid var(--line);background:var(--panel2)}
+.dbody{padding:15px 16px}
+/* --- evidence rows --- */
+.ev{background:var(--panel2);border-left:3px solid var(--line);border-radius:0 7px 7px 0;
+  padding:9px 12px;margin:7px 0;font-size:12.5px;overflow-wrap:anywhere}
+.ev .evid{font-family:var(--mono);font-size:11px;color:var(--accent);
+  display:block;margin-bottom:3px;font-weight:700}
+.ev .evnote{display:block;margin-top:5px;font-size:11px;color:var(--warn)}
+.action-box{background:rgba(91,140,255,.09);border:1px solid rgba(91,140,255,.32);
+  border-radius:8px;padding:11px 13px;margin-top:11px;font-size:12.5px;overflow-wrap:anywhere}
+.action-box strong{color:var(--accent)}
+/* --- score dimension bars --- */
+.dim-row{display:grid;grid-template-columns:130px 1fr 46px;gap:12px;
+  align-items:center;margin-bottom:10px;font-size:12.5px}
+.bar{height:8px;background:var(--panel2);border-radius:99px;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:99px;transition:width .4s}
+.dim-row .num{text-align:right;font-family:var(--mono);font-size:12px;font-weight:700}
+.dim-hint{grid-column:1/-1;color:var(--dim);font-size:11px;margin:-5px 0 9px}
+/* --- step lists --- */
+.tsteps{margin:6px 0 0;padding-left:20px;font-size:12.5px;line-height:1.65}
+.tsteps li{margin-bottom:6px;overflow-wrap:anywhere}
+.kv{display:grid;grid-template-columns:132px 1fr;gap:9px 14px;font-size:12.5px}
+.kv .k{color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.5px;padding-top:2px}
+.kv .v{overflow-wrap:anywhere}
+.exp{background:rgba(61,220,151,.08);border:1px solid rgba(61,220,151,.28);
+  border-radius:8px;padding:11px 13px;margin-top:11px;font-size:12.5px;overflow-wrap:anywhere}
+.exp strong{color:var(--ok)}
+.conf{display:inline-block;height:6px;width:52px;background:var(--panel2);
+  border-radius:99px;overflow:hidden;vertical-align:middle}
+.conf i{display:block;height:100%}
+.toolbar{position:sticky;top:57px;z-index:8;background:var(--bg);
+  padding:11px 0;margin-bottom:14px;display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:5px;background:var(--panel2);
+  border:1px solid var(--line);padding:4px 10px;border-radius:99px;font-size:11.5px;
+  color:var(--dim);white-space:nowrap}
+.dim{color:var(--dim)}
+/* --- item lists (objectives, scope, assumptions, questions) --- */
+.itemlist{list-style:none;margin:0;padding:0}
+.itemlist li{padding:9px 0;border-bottom:1px solid var(--line);display:flex;gap:10px;
+  align-items:baseline;flex-wrap:wrap;font-size:12.8px;line-height:1.55}
+.itemlist li:last-child{border-bottom:0}
+.itemlist li::before{content:'•';color:var(--accent);flex:0 0 auto}
+.itemlist.ok li::before{content:'✓';color:var(--ok)}
+.itemlist.bad li::before{content:'✕';color:var(--bad)}
+.itemlist.warn li::before{content:'?';color:var(--warn);font-weight:700}
+.itemlist .li-main{flex:1 1 260px;min-width:0;overflow-wrap:anywhere}
+.itemlist .li-sub{color:var(--dim);font-size:11.5px}
+/* --- timeline (milestones) --- */
+.timeline{position:relative;padding-left:8px}
+.tl-item{position:relative;padding:0 0 16px 22px;border-left:2px solid var(--line)}
+.tl-item:last-child{border-left-color:transparent;padding-bottom:0}
+.tl-dot{position:absolute;left:-7px;top:2px;width:12px;height:12px;border-radius:50%;
+  background:var(--accent);border:2px solid var(--panel)}
+.tl-label{font-weight:600;font-size:13px}
+.tl-date{color:var(--accent2);font-size:12px;margin-top:2px}
+.persona-name{font-size:14px;font-weight:650}
+/* --- flow --- */
+.flowwrap{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;overflow:auto}
+.lane{margin-bottom:22px}
+.lane-h{font-size:12px;font-weight:700;color:var(--accent2);
+  text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px}
+.steps{display:flex;gap:0;align-items:stretch;flex-wrap:wrap}
+.step{background:var(--panel2);border:1px solid var(--line);border-radius:9px;
+  padding:10px 13px;min-width:150px;max-width:230px;font-size:12px;position:relative}
+.step .n{font-size:10px;color:var(--accent);font-weight:700}
+.arrow{display:flex;align-items:center;padding:0 7px;color:var(--dim);font-size:18px}
+.decision{border-color:var(--warn)}
+.decision .n{color:var(--warn)}
+input[type=search],select{background:var(--panel2);border:1px solid var(--line);
+  color:var(--txt);padding:7px 11px;border-radius:8px;font-size:12.5px;font-family:inherit}
+input[type=search]{min-width:230px}
+.empty{text-align:center;padding:60px 20px;color:var(--dim)}
+.pill{background:var(--panel2);border:1px solid var(--line);padding:3px 9px;
+  border-radius:99px;font-size:11px;color:var(--dim)}
+.fileinfo{display:flex;gap:14px;align-items:center;margin-top:16px;
+  background:var(--panel);border:1px solid var(--line);padding:12px 16px;border-radius:10px;flex-wrap:wrap}
+.hidden{display:none!important}
+.spin{width:15px;height:15px;border:2px solid var(--line);
+  border-top-color:var(--accent);border-radius:50%;animation:s .7s linear infinite;display:inline-block}
+@keyframes s{to{transform:rotate(360deg)}}
+/* --- header controls / status --- */
+.hdr-controls{margin-left:auto;display:flex;gap:8px;align-items:center}
+.hdr-controls .btn.active{border-color:var(--accent);color:var(--txt)}
+#ai-status{border-color:var(--line)}
+#ai-status.on{color:var(--ok);border-color:var(--ok)}
+#ai-status.off{color:var(--dim)}
+.badge{margin-left:0}
+/* --- brain view --- */
+.brain-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+@media(max-width:900px){.brain-grid{grid-template-columns:1fr}}
+.node-chip{display:inline-block;margin:4px 5px 0 0;padding:5px 10px;border:1px solid var(--line);
+  border-radius:8px;background:var(--panel2);font-size:12px;cursor:pointer;transition:.12s}
+.node-chip:hover{border-color:var(--accent);color:var(--txt)}
+.node-chip.doc{border-left:3px solid var(--accent)}
+.pill.hot{color:var(--accent2);border-color:var(--accent2);margin-left:4px}
+.wikilink{color:var(--accent);cursor:pointer;border-bottom:1px dotted var(--accent)}
+.wikilink:hover{filter:brightness(1.2)}
+#brainnote code{background:var(--panel2);padding:1px 5px;border-radius:4px;font-family:var(--mono);font-size:11.5px}
+/* --- clarify / Q&A --- */
+.qa-item{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:13px 15px;margin-bottom:10px}
+.qa-q{font-size:13px;font-weight:600;margin-bottom:9px;line-height:1.5}
+.qa-src{display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;
+  padding:2px 7px;border-radius:99px;margin-right:7px;vertical-align:middle;border:1px solid var(--line);color:var(--dim)}
+.qa-src.ai{color:var(--accent2);border-color:var(--accent2)}
+.qa-ans{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:8px;
+  padding:8px 11px;font-size:12.5px;font-family:inherit;resize:vertical}
+.qa-controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:9px}
+.qa-controls label{font-size:11px;text-transform:uppercase;letter-spacing:.4px}
+.qa-controls .qa-record{margin-left:auto}
+/* --- modal + toast --- */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:50}
+.modal-box{background:var(--panel);border:1px solid var(--line);border-radius:14px;width:min(460px,92vw)}
+.modal-h{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line)}
+.modal-body{padding:16px}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--panel2);
+  border:1px solid var(--accent);color:var(--txt);padding:11px 18px;border-radius:10px;z-index:60;font-size:13px;box-shadow:0 8px 30px rgba(0,0,0,.4)}
+@media print{
+  body{background:#fff;color:#000}
+  header,.tabs,.toolbar,.drop,.fileinfo{display:none!important}
+  .pane{display:block!important;page-break-before:always}
+  .card,.flowwrap,details{border-color:#ccc;background:#fff}
+  th{background:#eee;color:#000;position:static}
+  .kpi{color:#000!important}
+}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Business Document Analyzer</h1>
+    <div class="sub">Detects the document type · maps content · builds a persistent brain · optional local AI</div>
+  </div>
+  <div class="hdr-controls">
+    <button class="btn ghost sm hidden" id="mode-doc">Document</button>
+    <button class="btn ghost sm hidden" id="mode-brain">🧠 Brain</button>
+    <button class="btn ghost sm hidden" id="settings-btn" title="AI settings">⚙︎</button>
+    <span class="pill" id="ai-status">Local only</span>
+  </div>
+  <span class="badge">100% LOCAL</span>
+</header>
+
+<main>
+  <div class="drop" id="drop">
+    <h2>Drop your business document here</h2>
+    <p>.docx · .xlsx · .csv · .txt · .md · .pdf &nbsp;—&nbsp; or click to browse</p>
+    <input type="file" id="file" class="hidden" accept=".docx,.xlsx,.xls,.csv,.txt,.md,.pdf">
+  </div>
+
+  <div class="fileinfo hidden" id="fileinfo">
+    <div><strong id="fname"></strong> <span class="dim mono" id="fmeta"></span></div>
+    <button class="btn sm hidden" id="addbrain" style="margin-left:auto">＋ Add to Brain</button>
+    <button class="btn ghost sm" id="reset">Load different file</button>
+    <button class="btn sm" id="export">Export report</button>
+    <button class="btn ghost sm" id="exportcsv">Test cases → CSV</button>
+  </div>
+
+  <div class="tabs hidden" id="tabs"></div>
+  <div id="panes"></div>
+  <div id="brain" class="hidden"></div>
+</main>
+
+<div class="modal hidden" id="settings">
+  <div class="modal-box">
+    <div class="modal-h"><strong>AI & Brain Settings</strong><button class="btn ghost sm" id="settings-close">✕</button></div>
+    <div class="modal-body" id="settings-body"></div>
+  </div>
+</div>
+<div id="toast" class="toast hidden"></div>
+
+<!-- Document parsers -->
+<script src="lib/mammoth.js"></script>
+<script src="lib/xlsx.min.js"></script>
+<script src="lib/pdf.min.js"></script>
+<script>
+  // Point pdf.js at its bundled worker. If the browser blocks the worker over
+  // file:// , pdf.js automatically falls back to a main-thread "fake worker",
+  // so PDF text extraction still works when you just double-click index.html.
+  if (window.pdfjsLib) { try { pdfjsLib.GlobalWorkerOptions.workerSrc = 'lib/pdf.worker.min.js'; } catch(e){} }
+</script>
+
+<!-- Analysis engine -->
+<script src="js/semantic.js"></script>
+<script src="js/generate.js"></script>
+<script src="js/quality.js"></script>
+<script src="js/extract.js"></script>
+
+<!-- Document intelligence -->
+<script src="js/elements.js"></script>
+<script src="js/doctypes.js"></script>
+
+<!-- Persistent brain (browser storage) + pluggable AI — no server required -->
+<script src="js/store.js"></script>
+<script src="js/llm.js"></script>
+<script src="js/brain.js"></script>
+<script src="js/brain_ui.js"></script>
+
+<!-- UI -->
+<script src="js/render.js"></script>
+<script src="js/ai.js"></script>
+<script src="js/qa.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+# Your data — never committed
+brain/
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+node_modules/
+*.log
