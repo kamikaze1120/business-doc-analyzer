@@ -77,9 +77,15 @@ async function ensureWebLLM(){
   let webllm;
   try{ webllm = await import('https://esm.run/@mlc-ai/web-llm@'+WEBLLM_VERSION); }
   catch(e){ throw new Error('Could not load the WebLLM library (network/CDN blocked). '+e.message); }
-  _webllmEngine = await webllm.CreateMLCEngine(model, {
-    initProgressCallback: p=>{ if(AI.onProgress) AI.onProgress(p && p.text ? p.text : ('Loading '+shortModel(model)+'…')); }
-  });
+  const cb = p=>{ if(AI.onProgress) AI.onProgress(p && p.text ? p.text : ('Loading '+shortModel(model)+'…')); };
+  // Switching models: reload on the existing engine instead of spawning a second
+  // one (two engines fight over the GPU and can hang). Fall back to a clean engine.
+  if(_webllmEngine){
+    try{ await _webllmEngine.reload(model); _webllmLoadedModel=model; return _webllmEngine; }
+    catch(e){ try{ await (_webllmEngine.unload && _webllmEngine.unload()); }catch(_){}
+      _webllmEngine=null; _webllmLoadedModel=null; }
+  }
+  _webllmEngine = await webllm.CreateMLCEngine(model, {initProgressCallback: cb});
   _webllmLoadedModel = model;
   return _webllmEngine;
 }
