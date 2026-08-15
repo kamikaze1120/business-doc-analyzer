@@ -14,8 +14,9 @@ const Store = (()=>{
   function load(){
     if(db) return db;
     try{ db = JSON.parse(localStorage.getItem(KEY)) || null; }catch(e){ db=null; }
-    if(!db) db = { index:{version:1, updated:null, docs:{}, nodes:{}, edges:[]}, notes:{}, clar:{}, data:{} };
+    if(!db) db = { index:{version:1, updated:null, docs:{}, nodes:{}, edges:[]}, notes:{}, clar:{}, data:{}, projects:{} };
     if(!db.data) db.data={};
+    if(!db.projects) db.projects={};
     return db;
   }
   function save(){ try{ localStorage.setItem(KEY, JSON.stringify(db)); return true; }catch(e){ console.warn('brain save failed (storage full or blocked)',e); return false; } }
@@ -133,5 +134,12 @@ const Store = (()=>{
 
   function data(){ load(); return db.data||{}; }         // {docId: entities} for compose
   function docMeta(){ load(); return db.index.docs||{}; }
-  return {ingest, index, note, saveAnswer, getDoc, saveAI, exportAll, importAll, clear, available, slug, data, docMeta};
+  /* ---- guided-build projects ---- */
+  function projects(){ load(); return db.projects||{}; }
+  function getProject(id){ load(); return (db.projects||{})[id]||null; }
+  function saveProject(p){ load(); p.updated=new Date().toISOString(); if(!p.created) p.created=p.updated;
+    (db.projects=db.projects||{})[p.id]=p; save(); return p; }
+  function deleteProject(id){ load(); if(db.projects) delete db.projects[id]; save(); }
+  return {ingest, index, note, saveAnswer, getDoc, saveAI, exportAll, importAll, clear, available, slug, data, docMeta,
+          projects, getProject, saveProject, deleteProject};
 })();

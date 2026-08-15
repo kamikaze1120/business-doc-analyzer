@@ -222,15 +222,18 @@ function wire(){
 
 /* ---------- Brain mode + chrome ---------- */
 function setMode(m){
-  const brain = m==='brain';
+  const brain = m==='brain', projects = m==='projects', doc = !brain && !projects;
   E('brain').classList.toggle('hidden', !brain);
-  E('drop').classList.toggle('hidden', brain || !!STATE);
-  E('fileinfo').classList.toggle('hidden', brain || !STATE);
-  E('tabs').classList.toggle('hidden', brain || !STATE);
-  E('panes').classList.toggle('hidden', brain);
-  E('mode-doc').classList.toggle('active', !brain);
+  E('projects').classList.toggle('hidden', !projects);
+  E('drop').classList.toggle('hidden', !doc || !!STATE);
+  E('fileinfo').classList.toggle('hidden', !doc || !STATE);
+  E('tabs').classList.toggle('hidden', !doc || !STATE);
+  E('panes').classList.toggle('hidden', !doc);
+  E('mode-doc').classList.toggle('active', doc);
   E('mode-brain').classList.toggle('active', brain);
+  E('mode-projects').classList.toggle('active', projects);
   if(brain) renderBrain();
+  if(projects) renderProjects();
 }
 function toast(msg){
   const t=E('toast'); t.textContent=msg; t.classList.remove('hidden');
@@ -240,7 +243,7 @@ const brainOn = ()=> Store.available();
 function updateChrome(){
   const s=E('ai-status');
   // Brain + settings are always available in the browser (no server needed).
-  ['mode-doc','mode-brain','settings-btn'].forEach(id=>E(id).classList.remove('hidden'));
+  ['mode-doc','mode-projects','mode-brain','settings-btn'].forEach(id=>E(id).classList.remove('hidden'));
   if(STATE) E('addbrain').classList.toggle('hidden', !brainOn());
   if(AI.available){ s.textContent=AI.label; s.className='pill on'; }
   else if(brainOn()){ s.textContent='Brain on · AI off'; s.className='pill'; }
@@ -268,7 +271,7 @@ function openSettings(){
       <div class="k">AI provider</div><div class="v"><select id="set-prov">
         <option value="auto"${!c.provider||c.provider==='auto'?' selected':''}>Auto — on-device browser AI</option>
         <option value="webllm"${c.provider==='webllm'?' selected':''}>In-browser model (WebLLM · Qwen/Llama)</option>
-        <option value="openai"${c.provider==='openai'?' selected':''}>OpenAI-compatible endpoint</option>
+        <option value="openai"${c.provider==='openai'?' selected':''}>OpenAI-compatible / Ollama (open or internal server)</option>
         <option value="anthropic"${c.provider==='anthropic'?' selected':''}>Anthropic endpoint</option>
         <option value="off"${c.provider==='off'?' selected':''}>Off</option>
       </select></div>
@@ -301,7 +304,7 @@ function openSettings(){
       : prov.value==='webllm'
       ? 'Runs a real small model (Qwen/Llama) inside your browser via WebGPU — no install, no server, nothing leaves your machine. The first use downloads the model (~1–2 GB, cached afterward). Needs a recent Chrome/Edge and network access to the model CDN.'
       : prov.value==='off' ? 'AI features are turned off. Everything else still works.'
-      : 'Paste an approved endpoint + key (OpenAI-compatible or Anthropic). The key is stored only in this browser and used directly from your machine.'; };
+      : 'Paste an approved endpoint + key (OpenAI-compatible or Anthropic). Works with an open LLM provider, Claude/Anthropic, or an Ollama server on your internal network — e.g. endpoint http://your-server:11434/v1, any key, model qwen2.5:3b. The key is stored only in this browser and used directly from your machine.'; };
   prov.onchange=syncHint; syncHint();
   E('set-save').onclick=async()=>{
     const provider=prov.value;
@@ -328,6 +331,7 @@ E('export').onclick=exportReport;
 E('exportcsv').onclick=exportCSV;
 E('addbrain').onclick=addToBrain;
 E('mode-doc').onclick=()=>setMode('doc');
+E('mode-projects').onclick=()=>setMode('projects');
 E('mode-brain').onclick=()=>setMode('brain');
 E('settings-btn').onclick=openSettings;
 E('settings-close').onclick=()=>E('settings').classList.add('hidden');
