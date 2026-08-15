@@ -1,0 +1,69 @@
+name: Bug report
+description: Report something that isn't working correctly
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug! Please **do not** include confidential
+        business documents or sensitive data — redact anything private before attaching.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug and what you expected instead.
+      placeholder: When I load a .docx BRD, the Test Cases tab is empty even though requirements were detected…
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: How can we reproduce it?
+      placeholder: |
+        1. Open index.html
+        2. Drop in a .docx file with FR/NFR requirements
+        3. Open the Test Cases tab
+        4. See that it's empty
+    validations:
+      required: true
+  - type: dropdown
+    id: doc-type
+    attributes:
+      label: Document type involved
+      description: What kind of document triggered the issue?
+      options:
+        - BRD / SRS / Requirements
+        - PRD
+        - Project Charter
+        - Agile / backlog
+        - Process document
+        - Spreadsheet (.xlsx / .csv)
+        - Other / not sure
+    validations:
+      required: false
+  - type: input
+    id: browser
+    attributes:
+      label: Browser & version
+      placeholder: Chrome 140 / Edge 140 / Firefox 130 …
+    validations:
+      required: true
+  - type: dropdown
+    id: how-opened
+    attributes:
+      label: How are you running it?
+      options:
+        - Opened index.html directly (file://)
+        - Hosted (GitHub Pages or other static host)
+    validations:
+      required: true
+  - type: textarea
+    id: console
+    attributes:
+      label: Console output
+      description: Any errors from the browser console (F12 → Console). Paste as text.
+      render: shell
+    validations:
+      required: false
