@@ -12,7 +12,10 @@ const COMPOSE_TEMPLATES = [
   {id:'risks',       name:'Consolidated Risk Register (all docs)',scope:'multi'},
   {id:'rtm',         name:'Requirements Traceability Matrix',      scope:'multi'},
   {id:'testplan',    name:'Master Test Plan',                      scope:'multi'},
-  {id:'systems',     name:'Systems & Integration Inventory',       scope:'multi'}
+  {id:'systems',     name:'Systems & Integration Inventory',       scope:'multi'},
+  {id:'raci',        name:'RACI Matrix (one document)',            scope:'single'},
+  {id:'timeline',    name:'Milestone Timeline (all docs)',          scope:'multi'},
+  {id:'duplicates',  name:'Duplicate / Similar Requirements',       scope:'multi'}
 ];
 
 function _esc(s){ return String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
@@ -81,8 +84,66 @@ const COMPOSER = {
     const html=`<h1>Systems &amp; Integration Inventory</h1><p class="muted">${list.length} systems across ${docs.length} document(s) · ${new Date().toLocaleDateString()}</p>`+
       (list.length?tbl(['System / Integration','# Docs','Referenced in'], list.map(([s,set])=>[s,set.size,[...set].map(id=>_docTitle(meta,id)).join('; ')])):'<p class="muted">No systems detected.</p>');
     return {title:'Systems & Integration Inventory', html, md:htmlToMd(html)};
+  },
+  raci(data, meta, docs){
+    const id=docs[0], e=data[id]||{}, title=_docTitle(meta,id);
+    const roles=[...new Set((e.stakeholders||[]).map(s=>s.role))].slice(0,10);
+    let acts=[];
+    if((e.requirements||[]).length) acts=e.requirements.map(r=>({label:r.id+': '+String(r.text).slice(0,70), text:r.text}));
+    else if((e.milestones||[]).length) acts=e.milestones.map(m=>({label:m.label, text:m.label}));
+    else acts=(e.objectives||[]).map(o=>({label:o.text||o, text:o.text||o}));
+    if(!roles.length || !acts.length){
+      const h=`<h1>RACI Matrix — ${_esc(title)}</h1><p class="muted">Not enough roles or activities in this document to build a matrix.</p>`;
+      return {title:'RACI Matrix — '+title, html:h, md:htmlToMd(h)}; }
+    const accountable = roles.find(r=>/sponsor|owner|director|chief|head|vp|manager|lead/i.test(r)) || roles[0];
+    const cell=(role,a)=>{ const kw=role.toLowerCase().split(/\s+/).filter(w=>w.length>3);
+      const R=kw.some(w=>a.text.toLowerCase().includes(w)); const marks=[]; if(R)marks.push('R'); if(role===accountable)marks.push('A'); return marks.join('/'); };
+    const html=`<h1>RACI Matrix — ${_esc(title)}</h1>
+      <p class="muted">Draft · R (Responsible) auto-derived from role mentions · A (Accountable) = ${_esc(accountable)} · add C/I as you refine · ${new Date().toLocaleDateString()}</p>`+
+      tbl(['Activity', ...roles], acts.slice(0,60).map(a=>[a.label, ...roles.map(r=>cell(r,a))]));
+    return {title:'RACI Matrix — '+title, html, md:htmlToMd(html)};
+  },
+  timeline(data, meta, docs){
+    const items=[];
+    docs.forEach(id=>{ (data[id]&&data[id].milestones||[]).forEach(m=>items.push({label:m.label, date:m.date||'', src:id})); });
+    if(!items.length){ const h='<h1>Milestone Timeline</h1><p class="muted">No milestones with dates found in the selected documents.</p>'; return {title:'Milestone Timeline', html:h, md:htmlToMd(h)}; }
+    items.forEach(it=>it._k=_timeKey(it.date));
+    items.sort((a,b)=> (a._k===null)-(b._k===null) || (a._k>b._k?1:a._k<b._k?-1:0));
+    // simple visual timeline + table
+    const vis=`<div style="margin:10px 0">`+items.map(it=>`<div style="display:flex;gap:10px;align-items:baseline;padding:4px 0;border-left:3px solid #5b8cff;padding-left:12px;margin-left:4px">
+        <strong style="min-width:120px;color:#0b5">${_esc(it.date||'(undated)')}</strong>
+        <span>${_esc(it.label)} <span class="muted">— ${_esc(_docTitle(meta,it.src))}</span></span></div>`).join('')+`</div>`;
+    const html=`<h1>Milestone Timeline</h1><p class="muted">${items.length} milestones across ${docs.length} document(s) · sorted by date · ${new Date().toLocaleDateString()}</p>${vis}`+
+      tbl(['Date','Milestone','Project'], items.map(it=>[it.date||'(undated)', it.label, _docTitle(meta,it.src)]));
+    return {title:'Milestone Timeline', html, md:htmlToMd(html)};
+  },
+  duplicates(data, meta, docs){
+    const reqs=[]; docs.forEach(id=>{ (data[id]&&data[id].requirements||[]).forEach(r=>reqs.push({id:r.id, text:r.text, doc:id})); });
+    const norm=t=>new Set(String(t).toLowerCase().replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(w=>w.length>2 && !_DUP_STOP.has(w)));
+    const toks=reqs.map(r=>norm(r.text));
+    const jac=(a,b)=>{ let i=0; a.forEach(x=>{ if(b.has(x)) i++; }); const u=a.size+b.size-i; return u?i/u:0; };
+    const parent=reqs.map((_,i)=>i); const find=x=>parent[x]===x?x:(parent[x]=find(parent[x]));
+    const TH=0.55;
+    for(let i=0;i<reqs.length;i++) for(let j=i+1;j<reqs.length;j++){ if(toks[i].size<3||toks[j].size<3) continue; if(jac(toks[i],toks[j])>=TH) parent[find(i)]=find(j); }
+    const groups={}; reqs.forEach((r,i)=>{ (groups[find(i)]=groups[find(i)]||[]).push(r); });
+    const dup=Object.values(groups).filter(g=>g.length>1).sort((a,b)=>b.length-a.length);
+    if(!dup.length){ const h=`<h1>Duplicate / Similar Requirements</h1><p class="muted">Scanned ${reqs.length} requirements across ${docs.length} document(s) — no near-duplicates found.</p>`; return {title:'Duplicate Requirements', html:h, md:htmlToMd(h)}; }
+    let body=''; dup.forEach((g,i)=>{ const cross=new Set(g.map(r=>r.doc)).size>1;
+      body+=`<h2>Group ${i+1} — ${g.length} similar${cross?' · across projects':''}</h2>`+tbl(['Req ID','Requirement','Project'], g.map(r=>[r.id, r.text, _docTitle(meta,r.doc)])); });
+    const html=`<h1>Duplicate / Similar Requirements</h1><p class="muted">${dup.length} group(s) of near-duplicate requirements across ${docs.length} document(s) · ${new Date().toLocaleDateString()}</p>${body}`;
+    return {title:'Duplicate Requirements', html, md:htmlToMd(html)};
   }
 };
+const _DUP_STOP=new Set('the a an of to for in on at by with from into via and or but if then that this these those its their is are was were be been being shall must should will may can not no system user users able required order various appropriate relevant applicable all each any able provide provides allow allows enable enables support supports'.split(/\s+/));
+function _timeKey(d){
+  if(!d) return null; d=String(d).trim(); let m;
+  if(m=d.match(/^(\d{4})-(\d{2})-(\d{2})$/)) return m[1]+m[2]+m[3];
+  const mo={jan:'01',feb:'02',mar:'03',apr:'04',may:'05',jun:'06',jul:'07',aug:'08',sep:'09',oct:'10',nov:'11',dec:'12'};
+  if(m=d.match(/([a-z]{3,9})\.?\s+(\d{1,2})?,?\s*(\d{4})/i)){ const k=mo[m[1].slice(0,3).toLowerCase()]; if(k) return m[3]+k+String(m[2]||'00').padStart(2,'0'); }
+  if(m=d.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/)){ const y=m[3].length===2?'20'+m[3]:m[3]; return y+String(m[1]).padStart(2,'0')+String(m[2]).padStart(2,'0'); }
+  if(m=d.match(/Q([1-4])\s*'?(\d{2,4})/i)){ const y=m[2].length===2?'20'+m[2]:m[2]; return y+'Q'+m[1]; }
+  return null;
+}
 
 function tbl(headers, rows){
   return `<table><thead><tr>${headers.map(h=>'<th>'+_esc(h)+'</th>').join('')}</tr></thead><tbody>`+
