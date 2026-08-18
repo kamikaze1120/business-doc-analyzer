@@ -18,6 +18,16 @@
 
   function M(){ return root.Model; }
   function rels(projectId, id){ return M().relationshipsOf(projectId, id); }
+  // Requirements linked to an objective, regardless of stored edge direction
+  // (uses the relationship registry when present, else an inline both-direction scan).
+  function reqsForObjective(projectId, objId){
+    if(root.Relationships) return root.Relationships.requirementsForObjective(projectId, objId);
+    const p=M().getProject(projectId); const out=[];
+    (p&&p.relationships||[]).forEach(r=>{ if(r.type!=='implements') return;
+      const other=r.from===objId?r.to:(r.to===objId?r.from:null);
+      if(other){ const o=p.objects[other]; if(o && REQ.indexOf(o.type)>=0) out.push(o); } });
+    return out;
+  }
   function hasEdge(projectId, id, type, dir){ const r=rels(projectId,id);
     const set = dir==='up'?r.upstream : dir==='down'?r.downstream : r.upstream.concat(r.downstream);
     return set.some(e=>e.type===type); }
@@ -48,8 +58,10 @@
     by('acceptance_criteria').forEach(ac=>{ if(!hasEdge(projectId,ac.id,'tested_by','down')) g(structural,'medium','ac_without_test',`${ac.displayId} has no test`,ac.id,'Add a test case for this acceptance criterion.'); });
 
     /* ---- Layer 3: cross-artifact coverage ---- */
-    by('business_objective').forEach(ob=>{ const r=rels(projectId,ob.id);
-      const supported = r.downstream.some(e=>{ const to=model.getObject(projectId,e.to); return to && REQ.includes(to.type); });
+    by('business_objective').forEach(ob=>{
+      // Inverse-aware: the implements edge is stored requirement->objective, so
+      // the objective's supporting requirements are reached in EITHER direction.
+      const supported = reqsForObjective(projectId, ob.id).length>0;
       if(!supported) g(crossArtifact,'high','objective_without_requirement',`Objective "${trim(ob.title)}" has no supporting requirements`,ob.id,'Add or link the requirements that deliver this objective.'); });
 
     requirements.forEach(o=>{ if(!hasEdge(projectId,o.id,'validated_by','down') && !hasEdge(projectId,o.id,'satisfies','up')){

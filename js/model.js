@@ -190,10 +190,16 @@
   function addRelationship(projectId, fromId, toId, type){
     if(!REL_TYPES.includes(type)) throw new Error('bad relationship type: '+type);
     const d=db(), p=d.projects[projectId]; if(!p) throw new Error('no such project');
-    if(fromId===toId) return null;
+    if(fromId===toId) return null;                          // reject self-reference
     if(!p.objects[fromId]||!p.objects[toId]) throw new Error('relationship endpoints must exist');
+    // Registry validation (when relationships.js is loaded): reject endpoint-type
+    // violations rather than silently corrupting the graph.
+    if(root.Relationships){
+      const v=root.Relationships.validate(p.objects[fromId].type, p.objects[toId].type, type);
+      if(!v.ok){ console.warn('addRelationship rejected: '+v.error); return null; }
+    }
     p.relationships=p.relationships||[];
-    if(p.relationships.some(r=>r.from===fromId&&r.to===toId&&r.type===type)) return null;
+    if(p.relationships.some(r=>r.from===fromId&&r.to===toId&&r.type===type)) return null;  // reject duplicate
     const rel={ id:UID.nsid('rel'), from:fromId, to:toId, type, createdAt:now() };
     p.relationships.push(rel); touch(d,p); return rel;
   }

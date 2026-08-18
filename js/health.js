@@ -35,7 +35,12 @@
     const unapprovedAssumptions = objs.filter(o=>o.type==='assumption' && o.status!=='approved').length;
 
     const objectives = objs.filter(o=>o.type==='business_objective');
-    const objectivesWithReqs = objectives.filter(ob=>model.relationshipsOf(projectId,ob.id).downstream.some(e=>{ const to=model.getObject(projectId,e.to); return to&&REQ.includes(to.type); })).length;
+    // Inverse-aware: implements is stored requirement->objective, so look both ways.
+    const reqsForObjective = ob => root.Relationships
+      ? root.Relationships.requirementsForObjective(projectId, ob.id)
+      : model.relationshipsOf(projectId,ob.id).upstream.concat(model.relationshipsOf(projectId,ob.id).downstream)
+          .filter(e=>e.type==='implements').map(e=>model.getObject(projectId, e.from===ob.id?e.to:e.from)).filter(o=>o&&REQ.includes(o.type));
+    const objectivesWithReqs = objectives.filter(ob=>reqsForObjective(ob).length>0).length;
 
     const metrics = {
       requirements: { total:reqs.length,

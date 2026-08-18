@@ -148,8 +148,11 @@ REQUIREMENT: ${o.description||o.title}`;
   function applyRewrite(projectId, id){
     const o=M().getObject(projectId,id); if(!o||!(o.attrs&&o.attrs.aiRewrite)) return {applied:false};
     const text=o.attrs.aiRewrite.text; const attrs=Object.assign({},o.attrs); delete attrs.aiRewrite;
-    M().updateObject(projectId,id,{description:text, title:text.slice(0,80), attrs},{force:true, changeReason:'applied AI rewrite'});
-    return {applied:true};
+    const patch={description:text, title:text.slice(0,80), attrs}, opts={force:true, changeReason:'applied AI rewrite'};
+    // Route through the mutation facade so applying the rewrite cascades impact
+    // + document freshness; fall back to a plain update when it isn't loaded.
+    const res = root.Mutate ? root.Mutate.updateObject(projectId,id,patch,opts) : M().updateObject(projectId,id,patch,opts);
+    return {applied:true, result:res};
   }
 
   /* ---- engine-fronting agents (one model, no duplication) ---- */

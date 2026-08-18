@@ -11,15 +11,27 @@ const Store = (()=>{
   const KEY = 'bda:brain:v1';
   let db = null;
 
+  // Persistence goes through the storage abstraction (AppStorage) when present,
+  // falling back to localStorage directly so the legacy brain keeps working even
+  // if the abstraction module is not loaded. Same key and JSON shape as before.
+  const _hasAS = ()=> typeof AppStorage!=='undefined' && AppStorage;
+  function _read(){ if(_hasAS()) return AppStorage.getJSON(KEY, null);
+    try{ return JSON.parse(localStorage.getItem(KEY)); }catch(e){ return null; } }
+  function _write(v){ if(_hasAS()) return AppStorage.setJSON(KEY, v);
+    try{ localStorage.setItem(KEY, JSON.stringify(v)); return true; }catch(e){ console.warn('brain save failed (storage full or blocked)',e); return false; } }
+  function _remove(){ if(_hasAS()) return AppStorage.remove(KEY); try{ localStorage.removeItem(KEY); }catch(e){} }
+  function _persistent(){ if(_hasAS()) return AppStorage.persistent();
+    try{ localStorage.setItem('bda:test','1'); localStorage.removeItem('bda:test'); return true; }catch(e){ return false; } }
+
   function load(){
     if(db) return db;
-    try{ db = JSON.parse(localStorage.getItem(KEY)) || null; }catch(e){ db=null; }
+    db = _read() || null;
     if(!db) db = { index:{version:1, updated:null, docs:{}, nodes:{}, edges:[]}, notes:{}, clar:{}, data:{}, projects:{} };
     if(!db.data) db.data={};
     if(!db.projects) db.projects={};
     return db;
   }
-  function save(){ try{ localStorage.setItem(KEY, JSON.stringify(db)); return true; }catch(e){ console.warn('brain save failed (storage full or blocked)',e); return false; } }
+  function save(){ return _write(db); }
 
   /* ---- helpers (mirror the former server) ---- */
   function slug(s){ return String(s||'').toLowerCase().normalize('NFKD').replace(/[^\w\s-]/g,'')
@@ -129,8 +141,8 @@ const Store = (()=>{
   }
   function exportAll(){ load(); return JSON.stringify(db, null, 2); }
   function importAll(json){ try{ const d=JSON.parse(json); if(!d.index||!d.notes) throw 0; db=d; save(); return {ok:true, stats:stats(db.index)}; }catch(e){ return {ok:false,error:'not a valid brain file'}; } }
-  function clear(){ db=null; localStorage.removeItem(KEY); load(); }
-  function available(){ try{ localStorage.setItem('bda:test','1'); localStorage.removeItem('bda:test'); return true; }catch(e){ return false; } }
+  function clear(){ db=null; _remove(); load(); }
+  function available(){ return _persistent(); }
 
   function data(){ load(); return db.data||{}; }         // {docId: entities} for compose
   function docMeta(){ load(); return db.index.docs||{}; }

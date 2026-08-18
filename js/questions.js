@@ -13,6 +13,8 @@
 ;(function(root){
   'use strict';
   function M(){ return root.Model; }
+  // Prefer the mutation facade (cascades impact + freshness); fall back to Model.
+  function up(projectId, id, patch, opts){ return root.Mutate ? root.Mutate.updateObject(projectId,id,patch,opts) : M().updateObject(projectId,id,patch,opts); }
 
   const GAP_QUESTION = {
     no_test_coverage:   d=>({type:'open', text:`What observable outcome verifies ${d} — i.e. what should a test check?`}),
@@ -87,8 +89,8 @@
     function markImpacted(id){ if(!id) return; impacted.add(id);
       model.relationshipsOf(projectId,id).downstream.forEach(e=>impacted.add(e.to)); }
 
-    if(question.gapType==='missing_priority' && tid){ model.updateObject(projectId,tid,{priority:answer},{changeReason:'clarified priority'}); model.addEvidence(projectId,tid,ev); markImpacted(tid); }
-    else if(question.gapType==='step_without_actor' && tid){ const o=model.getObject(projectId,tid); o.attrs=o.attrs||{}; o.attrs.actor=answer; model.updateObject(projectId,tid,{attrs:o.attrs},{force:true,changeReason:'assigned actor'}); model.addEvidence(projectId,tid,ev); markImpacted(tid); }
+    if(question.gapType==='missing_priority' && tid){ up(projectId,tid,{priority:answer},{changeReason:'clarified priority'}); model.addEvidence(projectId,tid,ev); markImpacted(tid); }
+    else if(question.gapType==='step_without_actor' && tid){ const o=model.getObject(projectId,tid); o.attrs=o.attrs||{}; o.attrs.actor=answer; up(projectId,tid,{attrs:o.attrs},{force:true,changeReason:'assigned actor'}); model.addEvidence(projectId,tid,ev); markImpacted(tid); }
     else if(question.source==='conflict'){ // record a resolution proposal; never auto-resolve
       const conf=model.listObjects(projectId,'conflict').find(o=>o.attrs&&o.attrs.sources&&question.conflictSources&&o.attrs.sources.slice().sort().join('|')===question.conflictSources.slice().sort().join('|'));
       if(conf && root.Conflicts){ const attrs=Object.assign({}, conf.attrs, {proposedResolution:String(answer)});
@@ -99,7 +101,7 @@
     else if(tid){ // generic: the answer becomes a stakeholder statement on the target
       model.addEvidence(projectId,tid,ev);
       const o=model.getObject(projectId,tid); if(o){ o.attrs=o.attrs||{}; o.attrs.clarifications=(o.attrs.clarifications||[]).concat([{q:question.text,a:String(answer),at:new Date().toISOString()}]);
-        model.updateObject(projectId,tid,{attrs:o.attrs},{force:true,changeReason:'clarification recorded'}); }
+        up(projectId,tid,{attrs:o.attrs},{force:true,changeReason:'clarification recorded'}); }
       markImpacted(tid);
     }
     return { impacted:[...impacted] };
