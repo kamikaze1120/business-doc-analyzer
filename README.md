@@ -52,6 +52,20 @@ What that gives you:
 
 Everything above is **deterministic first** — it works with no AI at all — and the pluggable LLM enriches it when configured.
 
+### Architecture integrity (hardening)
+
+The model layer is built to stay internally consistent and trustworthy — see [`ARCHITECTURE_AUDIT.md`](ARCHITECTURE_AUDIT.md) (evidence-based audit) and [`IMPLEMENTATION_REPORT.md`](IMPLEMENTATION_REPORT.md) (what was fixed, tested, and why):
+
+- **Relationship registry + inverse-aware traversal** — a canonical contract (source/target types, inverse names) validates every edge and lets analysis follow a link in either stored direction, so traceability and gap/impact analysis can't silently break on edge direction.
+- **Centralized mutation facade** — object changes flow through one path: update → version history → change-impact → document freshness → project-health delta → a structured result.
+- **Versioned export/import** — back up or move a project as a self-describing package; imports are treated as **untrusted** (schema + type + relationship validation, prototype-pollution guard, backup-before-apply, id-collision handling). No imported content is executed.
+- **Rule registries + scope-awareness** — gap detection is a declarative registry; a project can mark aspects out of scope (e.g. testing) so it isn't penalized for artifacts it doesn't need.
+- **Layered duplicate & conflict detection** — exact / strong / possible duplicate layers with confidence and a recommended action (explicit merge only, never automatic); conflicts include priority/status/date categories and a `dismissed` lifecycle that requires a reason and preserves evidence.
+- **Validated AI output** — every LLM proposal is checked against a typed schema before it can create anything; invalid/malformed output is dropped (with secret-free diagnostics) and the agent falls back to its deterministic path. AI proposals are always `ai_proposed` and never auto-approved.
+- **Explainable impact + version-keyed freshness + traceability** — each impacted object is labelled direct/indirect with the path that made it impacted; a generated document is flagged "needs review" only when one of *its* sources' versions actually advances; and objective→requirement→acceptance→test coverage is reported on the dashboard.
+
+The whole data layer is deterministic, dependency-free, and covered by 21 headless Node test suites (300+ assertions) plus browser regression suites.
+
 ---
 
 ## What it does
@@ -98,7 +112,7 @@ AI is **off** until you pick a provider. It's never required — everything exce
 
 1. **On-device browser AI (Auto)** — Chrome/Edge's built-in model (Gemini Nano), if available. Smallest and instant; no download, nothing leaves your machine.
 2. **In-browser model (WebLLM)** — runs a real open model (Qwen2.5 / Llama 3.2) inside your browser via WebGPU. No API key, no install. First use downloads the model (~1–2 GB) and caches it; afterward it runs locally, even offline. Needs a recent Chrome/Edge with WebGPU. This is the browser-native equivalent of Ollama and works on a hosted (GitHub Pages) site.
-3. **OpenAI-compatible / Ollama** — point it at an approved endpoint + key. Works with an open LLM provider **or an Ollama server on your internal network**, e.g. endpoint `http://your-server:11434/v1`, model `qwen2.5:3b`.
+3. **OpenAI-compatible / Ollama (with one-click presets)** — point it at an endpoint + key. Settings now ships **provider presets** that prefill the endpoint + model so you only paste your own free key: **Ollama** (local, no key needed), **Groq**, **OpenRouter** (free `:free` models), and **Google Gemini** — all free to sign up for. Choose **Custom** for any other OpenAI-compatible endpoint or an internal Ollama server. No API key is shipped in the app — a shared key would be scraped and revoked within hours, so the honest "works after a ~30-second signup" path is a preset plus your own free key.
 4. **Anthropic** — an approved Claude endpoint + key.
 
 Keys are stored **only in this browser** and called directly from your machine.

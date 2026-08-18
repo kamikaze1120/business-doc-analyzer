@@ -23,6 +23,19 @@ const WEBLLM_MODELS = [
 ];
 const WEBGPU_OK = (typeof navigator!=='undefined' && !!navigator.gpu);
 
+/* Out-of-the-box presets for OpenAI-compatible providers. These PREFILL the
+   endpoint + model only — you paste your OWN key (free to create). No key is
+   ever shipped in this repo: a shared key in a public page would be scraped and
+   revoked within hours, so the honest "works after a ~30-second signup" path is
+   a preset + your own free key. Local Ollama needs no real key. */
+const AI_PRESETS = [
+  {id:'custom',     label:'Custom — enter your own',                 endpoint:'',                                                  model:'',                                     note:''},
+  {id:'ollama',     label:'Ollama — local, no key needed',           endpoint:'http://localhost:11434/v1',                          model:'qwen2.5:3b',                           note:'Runs on your own machine (install Ollama + `ollama pull qwen2.5:3b`). The API key field can be any text — Ollama ignores it.'},
+  {id:'groq',       label:'Groq — free tier (your own free key)',    endpoint:'https://api.groq.com/openai/v1',                     model:'llama-3.1-8b-instant',                 note:'Create a free key at console.groq.com, then paste it below.'},
+  {id:'openrouter', label:'OpenRouter — free models (your own key)', endpoint:'https://openrouter.ai/api/v1',                       model:'meta-llama/llama-3.3-70b-instruct:free', note:'Create a free key at openrouter.ai, then paste it below. Model names ending in :free use no credits.'},
+  {id:'gemini',     label:'Google Gemini — free tier (your own key)',endpoint:'https://generativelanguage.googleapis.com/v1beta/openai', model:'gemini-2.0-flash',                 note:'Create a free key at aistudio.google.com, then paste it below.'}
+];
+
 function loadAICfg(){ try{ return JSON.parse(localStorage.getItem('bda:ai'))||{}; }catch(e){ return {}; } }
 function saveAICfg(c){ AI.cfg=c; try{ localStorage.setItem('bda:ai', JSON.stringify(c)); }catch(e){} }
 

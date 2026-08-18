@@ -286,10 +286,12 @@ function openSettings(){
     </div>
     <div id="set-cloud" class="${(c.provider==='openai'||c.provider==='anthropic')?'':'hidden'}" style="margin-top:10px">
       <div class="kv">
+        <div class="k">Preset</div><div class="v"><select id="set-preset" style="width:100%">${(typeof AI_PRESETS!=='undefined'?AI_PRESETS:[{id:'custom',label:'Custom'}]).map(pz=>`<option value="${pz.id}">${esc(pz.label)}</option>`).join('')}</select></div>
         <div class="k">Endpoint</div><div class="v"><input id="set-endpoint" type="text" style="width:100%" placeholder="https://…" value="${esc(c.endpoint||'')}"></div>
         <div class="k">API key</div><div class="v"><input id="set-key" type="password" style="width:100%" placeholder="stored only in this browser" value="${esc(c.key||'')}"></div>
         <div class="k">Model</div><div class="v"><input id="set-cmodel" type="text" style="width:100%" placeholder="e.g. gpt-4o-mini / claude-… " value="${esc(c.model||'')}"></div>
       </div>
+      <div id="set-preset-note" class="dim" style="font-size:11px;margin-top:6px"></div>
     </div>
     <div id="set-hint" class="dim" style="font-size:11.5px;margin-top:12px"></div>
     <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
@@ -307,8 +309,12 @@ function openSettings(){
       : prov.value==='webllm'
       ? 'Runs a real small model (Qwen/Llama) inside your browser via WebGPU — no install, no server, nothing leaves your machine. The first use downloads the model (~1–2 GB, cached afterward). Needs a recent Chrome/Edge and network access to the model CDN.'
       : prov.value==='off' ? 'AI features are turned off. Everything else still works.'
-      : 'Paste an approved endpoint + key (OpenAI-compatible or Anthropic). Works with an open LLM provider, Claude/Anthropic, or an Ollama server on your internal network — e.g. endpoint http://your-server:11434/v1, any key, model qwen2.5:3b. The key is stored only in this browser and used directly from your machine.'; };
+      : 'Pick a preset to prefill the endpoint + model, then paste your OWN free key (Groq, OpenRouter and Google all have free tiers; local Ollama needs no key). No key is shipped with the app — a shared key would be scraped and revoked. The key is stored only in this browser and used directly from your machine. Choose “Custom” to enter any OpenAI-compatible or Anthropic endpoint.'; };
   prov.onchange=syncHint; syncHint();
+  const preset=E('set-preset');
+  if(preset) preset.onchange=()=>{ const pz=(typeof AI_PRESETS!=='undefined'?AI_PRESETS:[]).find(x=>x.id===preset.value); if(!pz) return;
+    if(pz.id!=='custom'){ E('set-endpoint').value=pz.endpoint; E('set-cmodel').value=pz.model; }
+    E('set-preset-note').textContent=pz.note||''; };
   E('set-save').onclick=async()=>{
     const provider=prov.value;
     const cfg = (provider==='openai'||provider==='anthropic')
