@@ -303,7 +303,12 @@ function renderReview(p, body){
   E('gen-go').onclick=()=>{ const text=assembleDoc(p); if(text.trim().length<40){ toast('Add more content first.'); return; }
     p.status='complete'; saveCur(p); renderProjList();
     analyze(text, (p.meta.project||p.name||'Project')+'.md', text.length);
-    setMode('doc'); toast('Generated & analyzed — test cases and gaps are in the tabs.'); };
+    // Populate the canonical Project Truth Model from this analysis, with
+    // provenance evidence pointing back at the generated document.
+    let ptm=null; try{ if(typeof Ingest!=='undefined' && typeof STATE!=='undefined') ptm=Ingest.intoGuidedProjectModel(p, STATE); }catch(e){ console.warn('truth-model ingest skipped', e); }
+    setMode('doc');
+    toast(ptm ? `Generated & analyzed — ${ptm.result.created.length} facts written to the Project Truth Model with provenance.`
+              : 'Generated & analyzed — test cases and gaps are in the tabs.'); };
   E('gen-md').onclick=()=>{ const text=assembleDoc(p); const blob=new Blob([text],{type:'text/markdown'});
     const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=(p.meta.project||p.name||'document').replace(/[^\w]+/g,'_')+'.md'; a.click(); URL.revokeObjectURL(a.href); };
   E('gen-preview').onclick=()=>{ E('gen-out').innerHTML=`<pre style="white-space:pre-wrap;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:12px;font-size:11.5px;max-height:40vh;overflow:auto">${esc(assembleDoc(p))}</pre>`; };
