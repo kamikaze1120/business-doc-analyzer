@@ -71,7 +71,11 @@
     return { restored:snapId, objects:Object.keys(p.objects).length };
   }
 
-  const Versioning = { snapshot, listSnapshots, getSnapshot, diff, diffObjects, changeSummary, rollbackToSnapshot };
+  // Replace the snapshot list for a project (used by project import to
+  // restore an imported package's snapshots under the new project id).
+  function setProjectSnapshots(projectId, snaps){ const store=all(); store[projectId]=Array.isArray(snaps)?snaps:[]; save(store); return store[projectId].length; }
+
+  const Versioning = { snapshot, listSnapshots, getSnapshot, diff, diffObjects, changeSummary, rollbackToSnapshot, setProjectSnapshots };
   root.Versioning = Versioning;
   if(typeof module!=='undefined' && module.exports) module.exports = Versioning;
 })(typeof globalThis!=='undefined' ? globalThis : this);

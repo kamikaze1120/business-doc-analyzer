@@ -26,6 +26,11 @@ function renderOS(){
        <button class="btn sm" id="os-new" style="width:100%">＋ New project</button>
        <button class="btn ghost sm" id="os-idea" style="width:100%;margin-top:6px">✨ Start from an idea</button>
        <div class="os-plist" id="os-plist"></div>
+       <div class="os-io">
+         <button class="btn ghost sm" id="os-export" title="Export the selected project as a portable JSON package">⬇ Export</button>
+         <button class="btn ghost sm" id="os-import" title="Import a project package (validated, current data backed up first)">⬆ Import</button>
+         <input type="file" id="os-import-file" accept=".json" class="hidden">
+       </div>
      </aside>
      <section class="os-main" id="os-main"></section>
    </div>`;
@@ -37,6 +42,21 @@ function renderOS(){
     try{ const r=await Workflow.startProject(idea.trim()); OS_PROJECT=r.projectId; OS_VIEW='dashboard';
       toast(`Discovery proposed ${r.discovered.length} item(s)${r.source==='ai'?' (AI-assisted)':''} — review and accept them in Knowledge.`); renderOS(); }
     catch(e){ toast('Discovery failed: '+e.message); } };
+  // Export / import the Truth Model as a portable, validated package.
+  const exp=E('os-export'); if(exp) exp.onclick=()=>{ if(typeof Portability==='undefined'||!OS_PROJECT){ toast('Select a project to export.'); return; }
+    const pkg=Portability.exportProject(OS_PROJECT); if(!pkg){ toast('Nothing to export.'); return; }
+    const blob=new Blob([JSON.stringify(pkg,null,2)],{type:'application/json'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+    a.download=(pkg.project.name||'project').replace(/[^\w]+/g,'_')+'.ptm.json'; a.click(); URL.revokeObjectURL(a.href);
+    toast('Exported '+(pkg.counts?'':'')+'project package.'); };
+  const imp=E('os-import'); if(imp) imp.onclick=()=>E('os-import-file').click();
+  const impf=E('os-import-file'); if(impf) impf.onchange=async e=>{ const f=e.target.files[0]; if(!f) return;
+    try{ const text=await f.text(); const r=Portability.importProject(text);
+      if(!r.ok){ toast('Import failed: '+(r.errors||['invalid file']).join('; ')); return; }
+      OS_PROJECT=r.projectId; OS_VIEW='dashboard';
+      toast(`Imported ${r.counts.objects} objects, ${r.counts.relationships} links${r.renamed?' (renamed to avoid id collision)':''}${r.droppedRelationships?`, ${r.droppedRelationships} invalid link(s) dropped`:''}.`);
+      renderOS();
+    }catch(err){ toast('Import failed: '+err.message); } };
   osSidebar(); osMain();
 }
 function osSidebar(){

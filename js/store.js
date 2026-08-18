@@ -139,8 +139,21 @@ const Store = (()=>{
     sec('Risks', j.risks, r=>r.risk?(r.risk+(r.mitigation?' — '+r.mitigation:'')):r); sec('Open questions', j.questions, x=>x);
     db.notes[key]+=out.join('\n')+'\n'; save(); return {ok:true};
   }
-  function exportAll(){ load(); return JSON.stringify(db, null, 2); }
-  function importAll(json){ try{ const d=JSON.parse(json); if(!d.index||!d.notes) throw 0; db=d; save(); return {ok:true, stats:stats(db.index)}; }catch(e){ return {ok:false,error:'not a valid brain file'}; } }
+  function exportAll(){ load(); return JSON.stringify(Object.assign({schemaVersion:1, kind:'bda-brain'}, db), null, 2); }
+  // Import treats the file as UNTRUSTED: safe parse (strips prototype-pollution
+  // keys), structural + schema-version validation, and a backup of the current
+  // brain before overwrite so a bad import is recoverable. No code is executed.
+  function importAll(json){
+    let d;
+    try{ d = JSON.parse(String(json), (k,v)=> (k==='__proto__'||k==='constructor'||k==='prototype') ? undefined : v); }
+    catch(e){ return {ok:false, error:'not valid JSON'}; }
+    if(!d || typeof d!=='object' || Array.isArray(d) || !d.index || !d.notes) return {ok:false, error:'not a valid brain file (missing index/notes)'};
+    if(typeof d.schemaVersion==='number' && d.schemaVersion>1) return {ok:false, error:'brain schemaVersion '+d.schemaVersion+' is newer than supported (1)'};
+    try{ load(); if(_hasAS()) AppStorage.setJSON('bda:brain:backup:v1', db); else localStorage.setItem('bda:brain:backup:v1', JSON.stringify(db||{})); }catch(e){}
+    d.schemaVersion = d.schemaVersion||1;
+    if(!d.data) d.data={}; if(!d.projects) d.projects={};
+    db=d; save(); return {ok:true, stats:stats(db.index)};
+  }
   function clear(){ db=null; _remove(); load(); }
   function available(){ return _persistent(); }
 
@@ -155,3 +168,6 @@ const Store = (()=>{
   return {ingest, index, note, saveAnswer, getDoc, saveAI, exportAll, importAll, clear, available, slug, data, docMeta,
           projects, getProject, saveProject, deleteProject};
 })();
+// Also expose for Node (CommonJS) so the brain is unit-testable; browsers keep
+// using the classic `const Store` global unchanged.
+if(typeof module!=='undefined' && module.exports) module.exports = Store;
