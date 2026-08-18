@@ -114,6 +114,7 @@
     const d=db(), p=d.projects[projectId]; if(!p) throw new Error('no such project: '+projectId);
     const o=newEnvelope(p, type, props);
     if(props && Array.isArray(props.evidence)) props.evidence.forEach(e=>o.evidence.push(makeEvidence(e)));
+    pushHistory(o, 'created');
     p.objects[o.id]=o; touch(d,p); return o;
   }
   function getObject(projectId, id){ const p=getProject(projectId); return p? (p.objects[id]||null):null; }
@@ -133,7 +134,22 @@
     if('status' in (patch||{})) o.lifecycle=o.status;
     o.updatedAt=now(); o.version=(o.version||1)+1;
     if(opts.changeReason) o.attrs.lastChangeReason=opts.changeReason;
+    pushHistory(o, opts.changeReason||'update');
     touch(d,p); return { blocked:false, object:o };
+  }
+  // Object-level version history — never overwrite the past silently (Phase 14).
+  function pushHistory(o, reason){
+    o.attrs=o.attrs||{}; o.attrs.history=o.attrs.history||[];
+    o.attrs.history.push({ version:o.version, at:o.updatedAt, changeReason:reason||null,
+      title:o.title, description:o.description, priority:o.priority, status:o.status });
+    if(o.attrs.history.length>30) o.attrs.history.shift();
+  }
+  function historyOf(projectId, id){ const o=getObject(projectId,id); return (o&&o.attrs&&o.attrs.history)||[]; }
+  function rollbackObject(projectId, id, toVersion){
+    const h=historyOf(projectId,id).find(v=>v.version===toVersion);
+    if(!h) throw new Error('no such version: '+toVersion);
+    return updateObject(projectId, id, {title:h.title, description:h.description, priority:h.priority},
+      {force:true, changeReason:'rollback to v'+toVersion});
   }
   function reviseApproved(projectId, id, patch, changeReason){
     return updateObject(projectId, id, patch, {force:true, changeReason:changeReason||'revision of approved object'});
@@ -151,6 +167,7 @@
     const d=db(), p=d.projects[projectId], o=p&&p.objects[id]; if(!o) throw new Error('no such object');
     o.status=status; o.lifecycle=status; o.updatedAt=now(); o.version=(o.version||1)+1;
     if(status==='approved'){ o.approvedBy=by||'user'; o.approvedAt=now(); }
+    pushHistory(o, 'status → '+status);
     touch(d,p); return o;
   }
   function approve(projectId, id, by){ return setStatus(projectId,id,'approved',by); }
@@ -213,6 +230,8 @@
     listProjects, projects, getProject, createProject, saveProject, deleteProject,
     // objects
     addObject, getObject, listObjects, byDisplayId, updateObject, reviseApproved, deleteObject, genDisplayId,
+    // versioning
+    historyOf, rollbackObject,
     // lifecycle
     setStatus, approve, reject,
     // evidence
