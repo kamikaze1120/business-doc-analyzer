@@ -16,6 +16,15 @@
   // Read the AI + llm primitives from the shared global scope when present.
   function ai(){ return (typeof AI!=='undefined' && AI) ? AI : {available:false}; }
   function llmJ(prompt,opts){ return (typeof llmJSON!=='undefined') ? llmJSON(prompt,opts) : Promise.resolve(null); }
+  // Validate AI output against a typed schema BEFORE it can create objects.
+  // Returns normalized valid items; malformed/invalid input yields [] (caller
+  // then falls back to the deterministic path). Diagnostics carry no secrets.
+  function aiItems(schemaName, arr){
+    if(root.AISchema){ const r=root.AISchema.validateList(schemaName, arr||[]);
+      if(r.rejected && r.rejected.length){ try{ console.warn('agents: dropped '+r.rejected.length+' invalid '+schemaName+' item(s)', r.diagnostics.errors); }catch(e){} }
+      return r.valid; }
+    return (Array.isArray(arr)?arr:[]).map(x=> typeof x==='string'?{text:x}:x).filter(Boolean);
+  }
 
   const SYS = /\b(salesforce|sap|oracle|workday|servicenow|sharepoint|mulesoft|laserfiche|active directory|azure ad|okta|docusign|power ?bi|tableau|snowflake|stripe|twilio|jira|dynamics)\b/ig;
   const ROLE = /\b(manager|director|administrator|approver|analyst|finance|hr|it|customer|vendor|supplier|employee|supervisor|owner|sponsor)\b/ig;
@@ -64,8 +73,8 @@
 ${ctx(projectId)}
 STATEMENT: ${s}`;
       const j=await llmJ(prompt,{temperature:0.2});
-      const addk=(arr,type)=>(arr||[]).forEach(it=>{ const text=(it&&(it.text||it))||''; if(!text||similarExists(projectId,type,text)) return;
-        created.push(proposeAI(projectId,type,{title:String(text).slice(0,90),description:String(text)}, it&&it.confidence, s)); });
+      const addk=(arr,type)=> aiItems('DiscoveryItem', arr).forEach(it=>{ if(similarExists(projectId,type,it.text)) return;
+        created.push(proposeAI(projectId,type,{title:it.text.slice(0,90),description:it.text}, it.confidence, s)); });
       if(j){ addk(j.objectives,'business_objective'); addk(j.stakeholders,'stakeholder'); addk(j.systems,'system'); addk(j.risks,'risk'); }
       return {created:created.map(brief), source:'ai'};
     }catch(e){ return {created:created.map(brief), source:'rules', aiError:e.message}; }
@@ -84,10 +93,10 @@ STATEMENT: ${s}`;
 ${ctx(projectId)}
 OBJECTIVE: ${ob.title}`;
           const j=await llmJ(prompt,{temperature:0.2});
-          const list=(j&&j.requirements)||[];
-          list.forEach(r=>{ const type=REQ_MAP[String(r.type||'FR').toUpperCase()]||'functional_requirement';
-            if(!r.text || similarExists(projectId,type,r.text)) return;
-            const o=proposeAI(projectId,type,{title:String(r.text).slice(0,80),description:String(r.text),priority:'Medium'}, r.confidence, ob.title);
+          const list=aiItems('RequirementProposal', j&&j.requirements);   // schema-validated + normalized
+          list.forEach(r=>{ const type=REQ_MAP[r.type]||'functional_requirement';
+            if(similarExists(projectId,type,r.text)) return;
+            const o=proposeAI(projectId,type,{title:r.text.slice(0,80),description:r.text,priority:'Medium'}, r.confidence, ob.title);
             M().addRelationship(projectId,o.id,ob.id,'implements'); created++; madeAI=true; });
         }catch(e){ /* fall through */ }
       }
@@ -108,12 +117,15 @@ OBJECTIVE: ${ob.title}`;
           const prompt=`For this requirement, write ONE acceptance criterion in Given/When/Then form and 2-3 test cases (positive, negative, and boundary where relevant). Return STRICT JSON: {"acceptance":"Given ... when ... then ...","tests":[{"title":"...","type":"Positive","expected":"...","confidence":0.0}]}
 REQUIREMENT: ${r.description||r.title}`;
           const j=await llmJ(prompt,{temperature:0.2});
-          if(j && (j.acceptance || (j.tests&&j.tests.length))){
-            const a=proposeAI(projectId,'acceptance_criteria',{title:('AC — '+r.title).slice(0,80),description:j.acceptance||('Acceptance for '+r.displayId)}, null, r.description);
+          const acItems = aiItems('AcceptanceCriteriaProposal', j ? [{text:j.acceptance, confidence:j.confidence}] : []);
+          const testItems = aiItems('TestCaseProposal', j&&j.tests);   // schema-validated + normalized
+          if(acItems.length || testItems.length){
+            const acText = acItems.length ? acItems[0].text : ('Acceptance for '+r.displayId);
+            const a=proposeAI(projectId,'acceptance_criteria',{title:('AC — '+r.title).slice(0,80),description:acText}, acItems[0]&&acItems[0].confidence, r.description);
             M().addRelationship(projectId,r.id,a.id,'validated_by'); ac++;
-            (j.tests||[]).forEach(t=>{ const o=proposeAI(projectId,'test_case',{title:String(t.title||('Verify '+r.displayId)).slice(0,80),attrs:{testType:t.type||'Positive',expected:t.expected||''}}, t.confidence, r.description);
+            testItems.forEach(t=>{ const o=proposeAI(projectId,'test_case',{title:t.title.slice(0,80),attrs:{testType:t.type,expected:t.expected||''}}, t.confidence, r.description);
               M().addRelationship(projectId,a.id,o.id,'tested_by'); M().addRelationship(projectId,r.id,o.id,'tested_by'); tc++; });
-            madeAI=(j.tests&&j.tests.length)>0;
+            madeAI = testItems.length>0;
           }
         }catch(e){ /* fall through */ }
       }
@@ -138,7 +150,8 @@ REQUIREMENT: ${r.description||r.title}`;
         const prompt=`Rewrite this requirement as a single clear, testable sentence in the form "<actor> shall <verb> <object> [when <condition>] [within <measurable limit>]". Keep the original intent; do not add scope. Return STRICT JSON: {"rewrite":"...","confidence":0.0}
 REQUIREMENT: ${o.description||o.title}`;
         const j=await llmJ(prompt,{temperature:0.2});
-        if(j && j.rewrite){ const attrs=Object.assign({},o.attrs,{aiRewrite:{text:String(j.rewrite),confidence:j.confidence,at:new Date().toISOString()}});
+        const rw=aiItems('RewriteProposal', j ? [{rewrite:j.rewrite, confidence:j.confidence}] : [])[0];   // schema-validated
+        if(rw){ const attrs=Object.assign({},o.attrs,{aiRewrite:{text:rw.rewrite,confidence:rw.confidence,at:new Date().toISOString()}});
           M().updateObject(projectId,o.id,{attrs},{force:true,changeReason:'AI rewrite suggestion'}); n++; }
       }catch(e){ /* skip this one */ }
     }
