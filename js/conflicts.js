@@ -14,7 +14,9 @@
     'business_requirement','business_rule','decision'];
   const ROLE = /\b(manager|director|vice president|vp|finance|cfo|ceo|coo|supervisor|approver|board|steering committee|committee|department head|owner|administrator)\b/ig;
   const NEG = /\b(not|no|never|cannot|can't|without|isn't|aren't|shouldn't|won't|prohibited|forbidden|disallow)\b/i;
-  const CONFLICT_LIFECYCLE = ['detected','under_review','resolution_proposed','approved','resolved'];
+  const DATE = /\b(\d{4}-\d{2}-\d{2}|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+\d{1,2}(?:,?\s*\d{4})?|\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}|Q[1-4]\s*'?\d{2,4})\b/ig;
+  const CONFLICT_LIFECYCLE = ['detected','under_review','resolution_proposed','approved','resolved','dismissed'];
+  function dates(t){ const out=[]; let m; DATE.lastIndex=0; while((m=DATE.exec(t))) out.push(m[0].toLowerCase().replace(/\s+/g,' ').trim()); return out; }
 
   function M(){ return root.Model; }
   function txt(o){ return (o.description||o.title||'').trim(); }
@@ -66,6 +68,20 @@
           add('contradiction','high','Contradiction',[A,B],
             'These appear to contradict (one negates the other) — request clarification.', `similarity ${Math.round(sim*100)}%`);
       }
+      // On same-topic objects, surface concrete divergences deterministically.
+      if(sim>=0.6){
+        // priority conflict
+        if(A.priority && B.priority && A.priority!==B.priority)
+          add('priority','medium','Priority conflict',[A,B],'Agree a single priority for this requirement.',`${A.priority} vs ${B.priority}`);
+        // status conflict (only when semantically opposed: approved vs rejected/deprecated)
+        const opp=(a,b)=> (a==='approved'&&(b==='rejected'||b==='deprecated'))||(b==='approved'&&(a==='rejected'||a==='deprecated'))||(a==='approved'&&b==='approved'?false:(a==='rejected'&&b==='approved'));
+        if(A.status && B.status && A.status!==B.status && (opp(A.status,B.status)||opp(B.status,A.status)))
+          add('status','medium','Status conflict',[A,B],'Reconcile the conflicting lifecycle states.',`${A.status} vs ${B.status}`);
+        // date / timeline conflict
+        const da=dates(ta), dbb=dates(tb);
+        if(da.length && dbb.length && da[0]!==dbb[0] && !da.some(x=>dbb.includes(x)))
+          add('date','medium','Timeline conflict',[A,B],'Confirm the correct date/deadline with the accountable stakeholder.',`${da[0]} vs ${dbb[0]}`);
+      }
     }
     const bySev={high:0,medium:0,low:0}; items.forEach(x=>bySev[x.severity]=(bySev[x.severity]||0)+1);
     return { items, summary:{ total:items.length, byKind:count(items,'kind'), bySeverity:bySev } };
@@ -88,14 +104,19 @@
     return { created, total:det.items.length };
   }
 
-  function setConflictStatus(projectId, conflictId, status, by){
+  function setConflictStatus(projectId, conflictId, status, by, reason){
     if(CONFLICT_LIFECYCLE.indexOf(status)<0) throw new Error('bad conflict status: '+status);
+    // Dismissing a conflict must be justified and never destroys the evidence.
+    if(status==='dismissed' && !(reason && String(reason).trim())) throw new Error('dismissing a conflict requires a reason');
     const o=M().getObject(projectId,conflictId); if(!o||o.type!=='conflict') throw new Error('not a conflict');
     // Persist through updateObject so the change survives (the store returns a
     // fresh parse per call — mutating a read-back object would be lost).
     const attrs=Object.assign({}, o.attrs, {conflictStatus:status}); if(by) attrs.resolvedBy=by;
-    M().updateObject(projectId, conflictId, {attrs}, {force:true, changeReason:'conflict '+status});
-    if(status==='resolved') M().setStatus(projectId, conflictId, 'archived', by);
+    if(status==='dismissed'){ attrs.dismissReason=String(reason).trim(); attrs.dismissedBy=by||null; }
+    M().updateObject(projectId, conflictId, {attrs}, {force:true, changeReason:'conflict '+status+(status==='dismissed'?' — '+attrs.dismissReason:'')});
+    // Resolved/dismissed conflicts leave the active board (archived) but their
+    // sources, evidence, and conflicts_with links are all preserved.
+    if(status==='resolved'||status==='dismissed') M().setStatus(projectId, conflictId, 'archived', by);
     return M().getObject(projectId,conflictId);
   }
 

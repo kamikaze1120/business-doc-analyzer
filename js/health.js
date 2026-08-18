@@ -18,6 +18,7 @@
     const model=M(); if(!model||!model.getProject(projectId)) return null;
     const objs=model.listObjects(projectId);
     const reqs=objs.filter(o=>REQ.includes(o.type));
+    const scope = root.Gaps && root.Gaps.scopeFlags ? root.Gaps.scopeFlags(model.getProject(projectId)) : {testing:true};
     const gaps = root.Gaps ? root.Gaps.detectGaps(projectId) : {all:[],summary:{}};
     const conflicts = root.Conflicts ? root.Conflicts.detectConflicts(projectId) : {items:[]};
     const questions = root.Questions ? root.Questions.generateQuestions(projectId) : [];
@@ -63,7 +64,7 @@
     // explainable deductions
     const ded=[]; const cut=(pts,reason)=>{ if(pts>0) ded.push({points:pts, reason}); };
     cut(Math.min(20,(intel.aggregate.untestable||0)*4), `${intel.aggregate.untestable||0} requirement(s) are not testable`);
-    cut(Math.min(20,noTest.length*3), `${noTest.length} requirement(s) have no test coverage`);
+    if(scope.testing) cut(Math.min(20,noTest.length*3), `${noTest.length} requirement(s) have no test coverage`);
     cut(Math.min(20,conflicts.items.length*7), `${conflicts.items.length} unresolved conflict(s)`);
     cut(Math.min(15,hiQ*3), `${hiQ} high-priority open question(s)`);
     cut(Math.min(10,needsReview*5), `${needsReview} document(s) need review (sources changed)`);
@@ -73,7 +74,7 @@
 
     return { readiness, dimensions:{
         requirementsQuality: intel.aggregate.avgQuality!=null?intel.aggregate.avgQuality:100,
-        testCoverage: metrics.traceability.reqsWithTestsPct,
+        testCoverage: scope.testing ? metrics.traceability.reqsWithTestsPct : 100,
         traceability: metrics.traceability.objectivesPct,
         documentFreshness: fresh.total? pct(fresh.total-needsReview, fresh.total):100,
         conflictFree: reqs.length? pct(reqs.length-metrics.requirements.conflicting, reqs.length):100

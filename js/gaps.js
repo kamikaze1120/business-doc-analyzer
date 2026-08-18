@@ -1,97 +1,124 @@
 /* ============================================================
-   GAP DETECTION ENGINE (Phase 6) — multi-layer, over the Truth Model.
+   GAP DETECTION ENGINE (audit Phase 6/11) — a RULE REGISTRY over the
+   Truth Model.
 
-     Layer 1  Structural   — missing ids/owners/priorities, orphans,
-                             requirements with no test, duplicate display ids.
-     Layer 2  Semantic      — requirement quality (delegates to the
-                             Requirement Intelligence Engine; AI optional).
-     Layer 3  Cross-artifact— objective→requirement→AC→test coverage,
-                             system→integration, process-step→actor.
+   Each rule is a declarative record: id, name, appliesTo (object types),
+   layer, severity, an optional `scope` aspect, a detect() predicate, a
+   message, and a recommendedAction. detectGaps() walks the registry so
+   rules are inspectable and extensible instead of hardcoded inline.
 
-   Deterministic and DOM-free. Every gap is actionable: it names the
-   object, the layer, a severity, and a recommendation.
+   SCOPE AWARENESS: a project may declare aspects out of scope
+   (project.meta.scope = {testing:false, ...}); rules tagged with that
+   aspect are then suppressed, so a project that explicitly excludes test
+   documentation is not penalized for missing test cases.
+
+   Deterministic, DOM-free. Gap `type` strings are preserved exactly so the
+   clarification engine and UI keep working.
    ============================================================ */
 ;(function(root){
   'use strict';
   const REQ = ['functional_requirement','non_functional_requirement','integration_requirement',
     'business_requirement','data_requirement','reporting_requirement'];
+  const QUAL = REQ.concat(['business_rule']);   // types the intelligence engine scores
 
   function M(){ return root.Model; }
-  function rels(projectId, id){ return M().relationshipsOf(projectId, id); }
-  // Requirements linked to an objective, regardless of stored edge direction
-  // (uses the relationship registry when present, else an inline both-direction scan).
-  function reqsForObjective(projectId, objId){
-    if(root.Relationships) return root.Relationships.requirementsForObjective(projectId, objId);
-    const p=M().getProject(projectId); const out=[];
+
+  // Which analysis aspects are in scope for a project (default: everything).
+  function scopeFlags(project){
+    const s=(project && project.meta && project.meta.scope) || {};
+    return { testing:s.testing!==false, acceptance_criteria:s.acceptance_criteria!==false,
+      integration:s.integration!==false, process:s.process!==false, documentation:s.documentation!==false };
+  }
+
+  function reqsForObjective(ctx, objId){
+    if(root.Relationships) return root.Relationships.requirementsForObjective(ctx.projectId, objId);
+    const p=ctx.model.getProject(ctx.projectId); const out=[];
     (p&&p.relationships||[]).forEach(r=>{ if(r.type!=='implements') return;
       const other=r.from===objId?r.to:(r.to===objId?r.from:null);
       if(other){ const o=p.objects[other]; if(o && REQ.indexOf(o.type)>=0) out.push(o); } });
     return out;
   }
-  function hasEdge(projectId, id, type, dir){ const r=rels(projectId,id);
-    const set = dir==='up'?r.upstream : dir==='down'?r.downstream : r.upstream.concat(r.downstream);
-    return set.some(e=>e.type===type); }
+  function trim(s){ s=String(s||''); return s.length>50?s.slice(0,47)+'…':s; }
+
+  /* ---- the rule registry ---- */
+  const RULES = [
+    { id:'duplicate_display_id', name:'Duplicate display id', appliesTo:null, layer:'structural', severity:'high',
+      detect:(o,ctx)=> o.displayId && ctx.displayDup.has(o.displayId),
+      message:o=>`Duplicate display id ${o.displayId}`, recommendation:'Regenerate display ids so each is unique.' },
+    { id:'orphan_requirement', name:'Orphaned requirement', appliesTo:REQ, layer:'structural', severity:'medium',
+      detect:(o,ctx)=>{ const r=ctx.rels(o.id); return r.upstream.length===0 && r.downstream.length===0; },
+      message:o=>`${o.displayId} is orphaned — not linked to any objective, rule, or test`, recommendation:'Link it to a business objective and add test coverage.' },
+    { id:'no_test_coverage', name:'Requirement without test coverage', appliesTo:REQ, layer:'structural', severity:'high', scope:'testing',
+      detect:(o,ctx)=> !ctx.hasEdge(o.id,'tested_by','down'),
+      message:o=>`${o.displayId} has no test coverage`, recommendation:'Generate at least one test case that verifies it.' },
+    { id:'missing_priority', name:'Requirement without priority', appliesTo:REQ, layer:'structural', severity:'low',
+      detect:(o)=> !o.priority, message:o=>`${o.displayId} has no priority`, recommendation:'Assign a priority (High/Medium/Low).' },
+    { id:'no_source', name:'Requirement without source', appliesTo:REQ, layer:'structural', severity:'medium',
+      detect:(o)=> (o.evidence||[]).length===0, message:o=>`${o.displayId} has no recorded source`, recommendation:'Attach evidence (which document/statement it came from).' },
+    { id:'test_without_requirement', name:'Test without requirement', appliesTo:['test_case'], layer:'structural', severity:'medium', scope:'testing',
+      detect:(o,ctx)=> !ctx.rels(o.id).upstream.some(e=>e.type==='tested_by'),
+      message:o=>`${o.displayId} is not linked to any requirement`, recommendation:'Link the test to the requirement it verifies, or remove it.' },
+    { id:'ac_without_test', name:'Acceptance criterion without test', appliesTo:['acceptance_criteria'], layer:'structural', severity:'medium', scope:'testing',
+      detect:(o,ctx)=> !ctx.hasEdge(o.id,'tested_by','down'), message:o=>`${o.displayId} has no test`, recommendation:'Add a test case for this acceptance criterion.' },
+    { id:'objective_without_requirement', name:'Objective without supporting requirement', appliesTo:['business_objective'], layer:'cross-artifact', severity:'high',
+      detect:(o,ctx)=> reqsForObjective(ctx,o.id).length===0,
+      message:o=>`Objective "${trim(o.title)}" has no supporting requirements`, recommendation:'Add or link the requirements that deliver this objective.' },
+    { id:'requirement_without_acceptance', name:'Requirement without acceptance criteria', appliesTo:REQ, layer:'cross-artifact', severity:'low', scope:'acceptance_criteria',
+      detect:(o,ctx)=> !ctx.hasEdge(o.id,'validated_by','down') && !ctx.hasEdge(o.id,'satisfies','up'),
+      message:o=>`${o.displayId} has no acceptance criteria / validating scenario`, recommendation:'Define acceptance criteria so it can be objectively accepted.' },
+    { id:'system_without_integration', name:'System without integration', appliesTo:['system'], layer:'cross-artifact', severity:'low', scope:'integration',
+      detect:(o,ctx)=>{ const r=ctx.rels(o.id); return !r.upstream.concat(r.downstream).some(e=>{ const other=ctx.model.getObject(ctx.projectId,e.from===o.id?e.to:e.from); return other && (other.type==='integration'||other.type==='integration_requirement'||other.type==='api'); }); },
+      message:o=>`System "${trim(o.title)}" is referenced but has no integration definition`, recommendation:'Define how this system integrates (interface/API/failure handling).' },
+    { id:'step_without_actor', name:'Process step without actor', appliesTo:['process_step'], layer:'cross-artifact', severity:'medium', scope:'process',
+      detect:(o,ctx)=> !(o.attrs&&o.attrs.actor) && !ctx.hasEdge(o.id,'owns','up'),
+      message:o=>`Process step "${trim(o.title)}" has no responsible actor`, recommendation:'Assign the actor/role that performs this step.' },
+    { id:'not_testable', name:'Requirement not testable', appliesTo:QUAL, layer:'semantic', severity:'high',
+      detect:(o,ctx)=>{ const q=ctx.quality[o.id]; return q && !q.testable; },
+      message:(o,ctx)=>`${o.displayId} is not testable as written`, recommendation:(o,ctx)=>{ const q=ctx.quality[o.id]; return (q&&q.remediation&&q.remediation[0])||'Restate with a concrete, observable action.'; } },
+    { id:'ambiguous', name:'Requirement is ambiguous', appliesTo:QUAL, layer:'semantic', severity:'medium',
+      detect:(o,ctx)=>{ const q=ctx.quality[o.id]; return q && q.testable && q.vague; },
+      message:o=>`${o.displayId} contains vague language`, recommendation:(o,ctx)=>{ const q=ctx.quality[o.id]; return (q&&q.remediation&&q.remediation[0])||'Replace vague terms with measurable criteria.'; } },
+    { id:'low_quality', name:'Requirement scores low on quality', appliesTo:QUAL, layer:'semantic', severity:'low',
+      detect:(o,ctx)=>{ const q=ctx.quality[o.id]; return q && q.testable && !q.vague && q.scores.overall<60; },
+      message:(o,ctx)=>`${o.displayId} scores low on quality (${ctx.quality[o.id].scores.overall})`, recommendation:'Tighten clarity, completeness, and measurability.' }
+  ];
 
   function detectGaps(projectId){
-    const model=M(); if(!model || !model.getProject(projectId)) return {structural:[],semantic:[],crossArtifact:[],summary:{total:0}};
-    const objs = model.listObjects(projectId);
-    const by = t => objs.filter(o=>o.type===t);
-    const structural=[], semantic=[], crossArtifact=[];
-    let seq=0; const g=(bucket,sev,type,message,objectId,rec)=>bucket.push({id:'gap'+(++seq),layer:bucket===structural?'structural':bucket===semantic?'semantic':'cross-artifact',severity:sev,type,message,objectId:objectId||null,recommendation:rec});
+    const model=M(); const project=model && model.getProject(projectId);
+    if(!project) return {structural:[],semantic:[],crossArtifact:[],all:[],summary:{total:0}};
+    const objs=model.listObjects(projectId);
+    const scope=scopeFlags(project);
+    // shared context
+    const displayCount={}; objs.forEach(o=>{ if(o.displayId) displayCount[o.displayId]=(displayCount[o.displayId]||0)+1; });
+    const displayDup=new Set(Object.keys(displayCount).filter(k=>displayCount[k]>1));
+    const quality={};
+    if(root.Intelligence){ root.Intelligence.assessProject(projectId).items.forEach(it=>{ quality[it.id]=it; }); }
+    const ctx={ projectId, model, objs, scope, displayDup, quality,
+      rels:id=>model.relationshipsOf(projectId,id),
+      hasEdge:(id,type,dir)=>{ const r=model.relationshipsOf(projectId,id); const set=dir==='up'?r.upstream:dir==='down'?r.downstream:r.upstream.concat(r.downstream); return set.some(e=>e.type===type); } };
 
-    /* ---- Layer 1: structural ---- */
-    const seenDisplay={};
-    objs.forEach(o=>{ if(o.displayId){ if(seenDisplay[o.displayId]) g(structural,'high','duplicate_display_id',`Duplicate display id ${o.displayId}`,o.id,'Regenerate display ids so each is unique.'); else seenDisplay[o.displayId]=o.id; } });
+    const structural=[], semantic=[], crossArtifact=[]; let seq=0;
+    const bucketFor=layer=> layer==='structural'?structural : layer==='semantic'?semantic : crossArtifact;
+    const val=(x,o)=> typeof x==='function'?x(o,ctx):x;
 
-    const requirements = objs.filter(o=>REQ.includes(o.type));
-    requirements.forEach(o=>{
-      const r=rels(projectId,o.id);
-      if(r.upstream.length===0 && r.downstream.length===0) g(structural,'medium','orphan_requirement',`${o.displayId} is orphaned — not linked to any objective, rule, or test`,o.id,'Link it to a business objective and add test coverage.');
-      if(!hasEdge(projectId,o.id,'tested_by','down')) g(structural,'high','no_test_coverage',`${o.displayId} has no test coverage`,o.id,'Generate at least one test case that verifies it.');
-      if(!o.priority) g(structural,'low','missing_priority',`${o.displayId} has no priority`,o.id,'Assign a priority (High/Medium/Low).');
-      if((o.evidence||[]).length===0) g(structural,'medium','no_source',`${o.displayId} has no recorded source`,o.id,'Attach evidence (which document/statement it came from).');
-    });
-
-    // tests with no requirement; acceptance criteria coverage
-    by('test_case').forEach(t=>{ const r=rels(projectId,t.id);
-      if(!r.upstream.some(e=>e.type==='tested_by')) g(structural,'medium','test_without_requirement',`${t.displayId} is not linked to any requirement`,t.id,'Link the test to the requirement it verifies, or remove it.'); });
-    by('acceptance_criteria').forEach(ac=>{ if(!hasEdge(projectId,ac.id,'tested_by','down')) g(structural,'medium','ac_without_test',`${ac.displayId} has no test`,ac.id,'Add a test case for this acceptance criterion.'); });
-
-    /* ---- Layer 3: cross-artifact coverage ---- */
-    by('business_objective').forEach(ob=>{
-      // Inverse-aware: the implements edge is stored requirement->objective, so
-      // the objective's supporting requirements are reached in EITHER direction.
-      const supported = reqsForObjective(projectId, ob.id).length>0;
-      if(!supported) g(crossArtifact,'high','objective_without_requirement',`Objective "${trim(ob.title)}" has no supporting requirements`,ob.id,'Add or link the requirements that deliver this objective.'); });
-
-    requirements.forEach(o=>{ if(!hasEdge(projectId,o.id,'validated_by','down') && !hasEdge(projectId,o.id,'satisfies','up')){
-      // requirement with no acceptance criteria / scenario validation
-      g(crossArtifact,'low','requirement_without_acceptance',`${o.displayId} has no acceptance criteria / validating scenario`,o.id,'Define acceptance criteria so it can be objectively accepted.'); } });
-
-    by('system').forEach(s=>{ const r=rels(projectId,s.id);
-      const integ = r.upstream.concat(r.downstream).some(e=>{ const other=model.getObject(projectId,e.from===s.id?e.to:e.from); return other && (other.type==='integration'||other.type==='integration_requirement'||other.type==='api'); });
-      if(!integ) g(crossArtifact,'low','system_without_integration',`System "${trim(s.title)}" is referenced but has no integration definition`,s.id,'Define how this system integrates (interface/API/failure handling).'); });
-
-    by('process_step').forEach(st=>{ if(!(st.attrs&&st.attrs.actor) && !hasEdge(projectId,st.id,'owns','up')) g(crossArtifact,'medium','step_without_actor',`Process step "${trim(st.title)}" has no responsible actor`,st.id,'Assign the actor/role that performs this step.'); });
-
-    /* ---- Layer 2: semantic (requirement quality) ---- */
-    if(root.Intelligence){
-      const q=root.Intelligence.assessProject(projectId);
-      q.items.forEach(it=>{
-        if(!it.testable) g(semantic,'high','not_testable',`${it.displayId} is not testable as written`,it.id, it.remediation[0]||'Restate with a concrete, observable action.');
-        else if(it.vague) g(semantic,'medium','ambiguous',`${it.displayId} contains vague language`,it.id, it.remediation[0]||'Replace vague terms with measurable criteria.');
-        else if(it.scores.overall<60) g(semantic,'low','low_quality',`${it.displayId} scores low on quality (${it.scores.overall})`,it.id,'Tighten clarity, completeness, and measurability.');
+    RULES.forEach(rule=>{
+      if(rule.scope && !scope[rule.scope]) return;   // out of scope → suppressed
+      const targets = rule.appliesTo===null ? objs : objs.filter(o=>rule.appliesTo.indexOf(o.type)>=0);
+      targets.forEach(o=>{
+        let hit=false; try{ hit=rule.detect(o,ctx); }catch(e){ hit=false; }
+        if(!hit) return;
+        bucketFor(rule.layer).push({ id:'gap'+(++seq), rule:rule.id, layer:rule.layer, severity:rule.severity,
+          type:rule.id, message:val(rule.message,o), objectId:o.id||null, recommendation:val(rule.recommendation,o) });
       });
-    }
+    });
 
     const all=structural.concat(semantic,crossArtifact);
     const bySev={high:0,medium:0,low:0}; all.forEach(x=>bySev[x.severity]=(bySev[x.severity]||0)+1);
     return { structural, semantic, crossArtifact, all,
-      summary:{ total:all.length, structural:structural.length, semantic:semantic.length, crossArtifact:crossArtifact.length, bySeverity:bySev } };
+      summary:{ total:all.length, structural:structural.length, semantic:semantic.length, crossArtifact:crossArtifact.length, bySeverity:bySev, scope } };
   }
-  function trim(s){ s=String(s||''); return s.length>50?s.slice(0,47)+'…':s; }
 
-  const Gaps = { detectGaps };
+  const Gaps = { detectGaps, RULES, scopeFlags };
   root.Gaps = Gaps;
   if(typeof module!=='undefined' && module.exports) module.exports = Gaps;
 })(typeof globalThis!=='undefined' ? globalThis : this);

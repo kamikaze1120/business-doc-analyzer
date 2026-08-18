@@ -105,12 +105,16 @@ function osDashboard(p, body){
   const card=(t,rows)=>`<div class="card"><h3 class="sec" style="margin-top:0">${t}</h3>${rows}</div>`;
   const kv=(k,v,cls)=>`<div class="os-kv"><span>${k}</span><b class="${cls||''}">${v}</b></div>`;
   const proposed=Model.listObjects(p.id).filter(o=>o.status==='ai_proposed').length;
+  const scope=(typeof Gaps!=='undefined'&&Gaps.scopeFlags)?Gaps.scopeFlags(p):{testing:true,acceptance_criteria:true,integration:true,process:true};
+  const scopeBoxes=[['testing','Testing'],['acceptance_criteria','Acceptance criteria'],['integration','Integration'],['process','Process']]
+    .map(a=>`<label class="os-scope"><input type="checkbox" data-scope="${a[0]}" ${scope[a[0]]?'checked':''}> ${a[1]}</label>`).join('');
   body.innerHTML=`
     <div class="toolbar">
       <button class="btn sm" id="os-runagents">🤖 Run BA agents</button>
       ${proposed?`<button class="btn ghost sm" id="os-acceptall">Accept all proposals (${proposed})</button>`:''}
       <span class="dim">Agents propose requirements, tests, and conflicts — nothing is approved without you.</span>
     </div>
+    <div class="os-scopes"><span class="dim">In scope:</span> ${scopeBoxes} <span class="dim" style="font-size:11px">— unchecked aspects are not penalized in gaps or health.</span></div>
     <div class="os-dash">
       <div class="card os-readycard">${ring}
         <div class="os-issues"><h3 class="sec" style="margin-top:0">Primary issues</h3>
@@ -135,6 +139,9 @@ function osDashboard(p, body){
       osMain(); }
     catch(e){ toast('Agents failed: '+e.message); btn.disabled=false; btn.textContent='🤖 Run BA agents'; } };
   if(E('os-acceptall')) E('os-acceptall').onclick=()=>{ const n=Workflow.acceptAll(p.id,'Mujtaba'); toast(`Accepted ${n} proposal(s).`); osMain(); };
+  body.querySelectorAll('input[data-scope]').forEach(cb=>cb.onchange=()=>{ const proj=Model.getProject(p.id);
+    proj.meta.scope=Object.assign({}, proj.meta.scope, {[cb.dataset.scope]:cb.checked}); Model.saveProject(proj);
+    toast(cb.dataset.scope+(cb.checked?' is now in scope':' is now out of scope')); osMain(); });
 }
 
 /* ---- knowledge / objects + inspector ---- */
@@ -211,8 +218,25 @@ function osConflicts(p, body){
       <ul class="itemlist">${c.statements.map((s,i)=>`<li><span class="li-main">${esc(c.sourceDisplay[i]||'')}: ${esc(s)}</span></li>`).join('')}</ul>
       <div class="action-box"><strong>Recommended:</strong> ${esc(c.recommendation)}</div></div>`).join('')
       : '<div class="exp"><strong>No conflicts detected.</strong></div>'}
-    ${recorded.length?`<h3 class="sec">Recorded conflicts (lifecycle)</h3>${recorded.map(o=>`<div class="os-obj"><span class="mono">${esc(o.displayId)}</span> ${esc(o.title)} <span class="status-badge st-warn">${esc((o.attrs&&o.attrs.conflictStatus)||'detected')}</span></div>`).join('')}`:''}`;
+    ${recorded.length?`<h3 class="sec">Recorded conflicts (lifecycle)</h3>${recorded.map(o=>{ const st=(o.attrs&&o.attrs.conflictStatus)||'detected';
+      return `<div class="os-obj" data-cid="${o.id}"><span class="mono">${esc(o.displayId)}</span> ${esc(o.title)} <span class="status-badge st-warn">${esc(st)}</span>${o.attrs&&o.attrs.dismissReason?` <span class="dim">— ${esc(o.attrs.dismissReason)}</span>`:''}${st!=='dismissed'&&st!=='resolved'?` <button class="btn ghost sm os-dismiss" data-cid="${o.id}" style="margin-left:auto">Dismiss…</button>`:''}</div>`; }).join('')}`:''}
+    ${(typeof Duplicates!=='undefined')?dupSection(p):''}`;
   E('os-recconf').onclick=()=>{ const r=Conflicts.recordConflicts(p.id); toast(`${r.created} conflict(s) recorded and linked.`); osMain(); };
+  body.querySelectorAll('.os-dismiss').forEach(btn=>btn.onclick=()=>{ const reason=prompt('Reason for dismissing this conflict (required):',''); if(!reason||!reason.trim()){ toast('A reason is required to dismiss.'); return; }
+    try{ Conflicts.setConflictStatus(p.id, btn.dataset.cid, 'dismissed', 'Mujtaba', reason.trim()); toast('Conflict dismissed (evidence preserved).'); osMain(); }catch(e){ toast('Dismiss failed: '+e.message); } });
+  body.querySelectorAll('.os-merge').forEach(btn=>btn.onclick=()=>{ if(!confirm('Merge '+btn.dataset.drop+' into '+btn.dataset.keep+'? This is not automatic and cannot be undone.')) return;
+    const r=Duplicates.merge(p.id, btn.dataset.keepid, btn.dataset.dropid, 'Mujtaba'); toast(r.merged?'Merged.':'Merge failed: '+(r.error||'')); osMain(); });
+}
+function dupSection(p){
+  const det=Duplicates.detect(p.id); if(!det.candidates.length) return '';
+  const rows=det.candidates.slice(0,30).map(c=>`<div class="card os-conf">
+    <div class="os-conf-h"><span class="tag t-BR">duplicate · L${c.layer}</span> <span class="os-prio ${c.confidence>=0.9?'bad':'warn'}">${Math.round(c.confidence*100)}%</span>
+      <span class="dim">${esc(c.reason)}</span></div>
+    <ul class="itemlist"><li><span class="li-main"><span class="mono">${esc(c.a.displayId)}</span> ${esc((c.a.title||'').slice(0,60))}</span></li>
+      <li><span class="li-main"><span class="mono">${esc(c.b.displayId)}</span> ${esc((c.b.title||'').slice(0,60))}</span></li></ul>
+    <div class="action-box"><strong>${esc(c.recommendation)}</strong>
+      <button class="btn ghost sm os-merge" data-keepid="${c.a.id}" data-dropid="${c.b.id}" data-keep="${esc(c.a.displayId)}" data-drop="${esc(c.b.displayId)}" style="margin-left:8px">Merge ${esc(c.b.displayId)} → ${esc(c.a.displayId)}</button></div></div>`).join('');
+  return `<h3 class="sec">Potential duplicates (${det.candidates.length}) — review, never auto-merged</h3>${rows}`;
 }
 
 /* ---- documents ---- */
