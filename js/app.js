@@ -340,5 +340,10 @@ E('compose-close').onclick=()=>E('compose').classList.add('hidden');
 E('compose').onclick=e=>{ if(e.target===E('compose')) E('compose').classList.add('hidden'); };
 wire();
 
+// Mirror any existing guided-builder projects into the canonical Project
+// Truth Model (idempotent, non-destructive — writes only the new truth store,
+// never touches legacy data). Safe no-op if the model layer isn't present.
+try{ if(typeof Migrate!=='undefined') Migrate.run(); }catch(e){ console.warn('truth-model migration skipped', e); }
+
 // Detect AI (on-device or configured cloud). Brain works regardless.
 probeAI().then(updateChrome);
