@@ -122,7 +122,7 @@ function osDashboard(p, body){
       </div>
       <div class="grid g4">
         ${card('Requirements', kv('Total',m.requirements.total)+kv('Approved',m.requirements.approved,'ok')+kv('Untestable',m.requirements.untestable,m.requirements.untestable?'bad':'')+kv('Ambiguous',m.requirements.ambiguous,m.requirements.ambiguous?'warn':'')+kv('Conflicting',m.requirements.conflicting,m.requirements.conflicting?'bad':'')+kv('Orphaned',m.requirements.orphaned,m.requirements.orphaned?'warn':''))}
-        ${card('Traceability', kv('Reqs with tests',m.traceability.reqsWithTests+'/'+m.requirements.total)+kv('Reqs with source',m.traceability.reqsWithSource+'/'+m.requirements.total)+kv('Objectives covered',m.traceability.objectivesWithReqs+'/'+m.traceability.objectivesTotal))}
+        ${card('Traceability', kv('Reqs with tests',m.traceability.reqsWithTests+'/'+m.requirements.total)+kv('Reqs with source',m.traceability.reqsWithSource+'/'+m.requirements.total)+kv('Objectives covered',m.traceability.objectivesWithReqs+'/'+m.traceability.objectivesTotal)+((typeof Traceability!=='undefined')?(()=>{ const tc=Traceability.coverage(p.id); return tc?kv('Full chains (obj→req→AC→test)',tc.fullChain.covered+'/'+tc.fullChain.total+' ('+tc.fullChain.pct+'%)',tc.fullChain.pct>=50?'ok':'warn'):''; })():''))}
         ${card('Documentation', kv('Generated',m.documentation.total)+kv('Needs review',m.documentation.needsReview,m.documentation.needsReview?'warn':'')+kv('Not yet generated',m.documentation.missing.length,m.documentation.missing.length?'dim':''))}
         ${card('Risks & Open', kv('Open risks',m.risks.openRisks)+kv('Unresolved conflicts',m.risks.unresolvedConflicts,m.risks.unresolvedConflicts?'bad':'')+kv('Open questions',m.risks.openQuestions,m.risks.openQuestions?'warn':'')+kv('Unapproved assumptions',m.risks.unapprovedAssumptions,m.risks.unapprovedAssumptions?'warn':''))}
       </div>
@@ -176,8 +176,11 @@ function osInspector(p, el){
     <div class="os-trace"><div><div class="dim">Upstream</div><ul class="os-rel">${rel.upstream.map(line).join('')||'<li class="dim">—</li>'}</ul></div>
       <div><div class="dim">Downstream</div><ul class="os-rel">${rel.downstream.map(line).join('')||'<li class="dim">—</li>'}</ul></div></div>
     ${gapsFor.length?`<h3 class="sec">Gaps</h3><ul class="itemlist warn">${gapsFor.map(g=>`<li><span class="li-main">${esc(g.message)}</span><span class="li-sub">${esc(g.recommendation||'')}</span></li>`).join('')}</ul>`:''}
+    ${(typeof Impact!=='undefined')?(()=>{ const im=Impact.computeImpact(p.id,o.id); if(!im.affected.length) return '';
+      return `<h3 class="sec">Downstream impact (${im.counts.direct} direct · ${im.counts.indirect} indirect)</h3>
+        <ul class="os-hist">${im.affected.slice(0,8).map(a=>`<li><span class="mono">${esc(a.displayId||'')}</span> <span class="prov-badge ${a.impactType==='direct'?'prov-accent':'prov-warn'}">${esc(a.impactType)}</span> <span class="dim">${esc(a.reason)}</span></li>`).join('')}</ul>`; })():''}
     <h3 class="sec">History (v${o.version})</h3>
-    <ul class="os-hist">${(o.attrs&&o.attrs.history||[]).slice().reverse().map(h=>`<li><span class="mono">v${h.version}</span> ${esc(h.changeReason||'')} <span class="dim">${esc((h.at||'').slice(0,10))}</span></li>`).join('')||'<li class="dim">—</li>'}</ul>`;
+    <ul class="os-hist">${(o.attrs&&o.attrs.history||[]).slice().reverse().map(h=>`<li><span class="mono">v${h.version}</span> ${esc(h.changeReason||'')}${h.by?' · '+esc(h.by):''} <span class="dim">${esc((h.at||'').slice(0,10))}</span></li>`).join('')||'<li class="dim">—</li>'}</ul>`;
   if(E('os-accept')) E('os-accept').onclick=()=>{ Workflow.accept(p.id, o.id, 'Mujtaba'); toast('Accepted → under review.'); osObjects(p, E('os-body')); };
   if(E('os-reject')) E('os-reject').onclick=()=>{ Workflow.reject(p.id, o.id, 'Mujtaba'); toast('Rejected.'); osObjects(p, E('os-body')); };
   if(E('os-applyrw')) E('os-applyrw').onclick=()=>{ Agents.applyRewrite(p.id, o.id); toast('Rewrite applied.'); osObjects(p, E('os-body')); };

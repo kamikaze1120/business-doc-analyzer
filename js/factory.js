@@ -129,7 +129,10 @@
     if(!M().getProject(projectId)) throw new Error('no such project');
     const built=t.build(projectId);
     const sourceObjectIds=[...built.sourceIds];
-    const base={ docType, markdown:built.markdown, sourceObjectIds, docStatus:'current',
+    // Record the version of every source object so freshness can later tell
+    // whether a source has ACTUALLY changed since this document was built.
+    const sourceVersions={}; sourceObjectIds.forEach(sid=>{ const o=M().getObject(projectId,sid); if(o) sourceVersions[sid]=o.version; });
+    const base={ docType, markdown:built.markdown, sourceObjectIds, sourceVersions, docStatus:'current',
       generatedAt:new Date().toISOString() };
     let doc=M().listObjects(projectId,'generated_document').find(d=>d.attrs&&d.attrs.docType===docType);
     if(doc){ const attrs=Object.assign({}, doc.attrs, base);
