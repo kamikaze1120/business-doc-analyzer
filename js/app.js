@@ -222,9 +222,10 @@ function wire(){
 
 /* ---------- Brain mode + chrome ---------- */
 function setMode(m){
-  const brain = m==='brain', projects = m==='projects', doc = !brain && !projects;
+  const brain = m==='brain', projects = m==='projects', os = m==='os', doc = !brain && !projects && !os;
   E('brain').classList.toggle('hidden', !brain);
   E('projects').classList.toggle('hidden', !projects);
+  E('os').classList.toggle('hidden', !os);
   E('drop').classList.toggle('hidden', !doc || !!STATE);
   E('fileinfo').classList.toggle('hidden', !doc || !STATE);
   E('tabs').classList.toggle('hidden', !doc || !STATE);
@@ -232,8 +233,10 @@ function setMode(m){
   E('mode-doc').classList.toggle('active', doc);
   E('mode-brain').classList.toggle('active', brain);
   E('mode-projects').classList.toggle('active', projects);
+  E('mode-os').classList.toggle('active', os);
   if(brain) renderBrain();
   if(projects) renderProjects();
+  if(os && typeof renderOS==='function') renderOS();
 }
 function toast(msg){
   const t=E('toast'); t.textContent=msg; t.classList.remove('hidden');
@@ -243,7 +246,7 @@ const brainOn = ()=> Store.available();
 function updateChrome(){
   const s=E('ai-status');
   // Brain + settings are always available in the browser (no server needed).
-  ['mode-doc','mode-projects','mode-brain','settings-btn'].forEach(id=>E(id).classList.remove('hidden'));
+  ['mode-doc','mode-os','mode-projects','mode-brain','settings-btn'].forEach(id=>E(id).classList.remove('hidden'));
   if(STATE) E('addbrain').classList.toggle('hidden', !brainOn());
   if(AI.available){ s.textContent=AI.label; s.className='pill on'; }
   else if(brainOn()){ s.textContent='Brain on · AI off'; s.className='pill'; }
@@ -332,6 +335,7 @@ E('exportcsv').onclick=exportCSV;
 E('addbrain').onclick=addToBrain;
 E('mode-doc').onclick=()=>setMode('doc');
 E('mode-projects').onclick=()=>setMode('projects');
+E('mode-os').onclick=()=>setMode('os');
 E('mode-brain').onclick=()=>setMode('brain');
 E('settings-btn').onclick=openSettings;
 E('settings-close').onclick=()=>E('settings').classList.add('hidden');
