@@ -2,9 +2,9 @@
 
 **Runs entirely in your browser. No install, no Node, no server. Your documents never leave your machine.**
 
-Drop in a business document — a BRD, PRD, project charter, requirements spec, process doc, spreadsheet — and it detects the type, maps the content, extracts requirements, generates test cases, scores quality, and builds a persistent, cross-referencing knowledge base.
+Drop in a business document a BRD, PRD, project charter, requirements spec, process doc, spreadsheet and it detects the type, maps the content, extracts requirements, generates test cases, scores quality, and builds a persistent, cross-referencing knowledge base.
 
-But it is no longer just a document tool. Underneath sits a **Project Truth Model** — a single, canonical source of truth for a project — and documents are *generated representations* of that model. The system behaves like an experienced Business Analyst: it ingests fragmented information (documents, notes, manual entry), structures it into a knowledge graph with full provenance, detects gaps and contradictions, asks the highest-impact clarifying questions, proposes requirements and tests, generates a whole ecosystem of interconnected documentation, and keeps everything traceable and fresh as things change.
+But it is no longer just a document tool. Underneath sits a **Project Truth Model** a single, canonical source of truth for a project and documents are *generated representations* of that model. The system behaves like an experienced Business Analyst: it ingests fragmented information (documents, notes, manual entry), structures it into a knowledge graph with full provenance, detects gaps and contradictions, asks the highest-impact clarifying questions, proposes requirements and tests, generates a whole ecosystem of interconnected documentation, and keeps everything traceable and fresh as things change.
 
 > 100% local · works offline · optional pluggable AI · the model is the source of truth, documents are generated from it
 
