@@ -24,11 +24,16 @@ function renderOS(){
    <div class="os-wrap">
      <aside class="os-side">
        <button class="btn sm" id="os-new" style="width:100%">＋ New project</button>
+       <button class="btn ghost sm" id="os-idea" style="width:100%;margin-top:6px">✨ Start from an idea</button>
        <div class="os-plist" id="os-plist"></div>
      </aside>
      <section class="os-main" id="os-main"></section>
    </div>`;
   E('os-new').onclick=()=>{ const name=prompt('Project name:','New Analysis Project'); if(name){ const p=Model.createProject({name, meta:{project:name}}); OS_PROJECT=p.id; OS_VIEW='dashboard'; renderOS(); } };
+  E('os-idea').onclick=()=>{ if(typeof Workflow==='undefined'){ toast('Workflow engine unavailable.'); return; }
+    const idea=prompt('Describe what you are trying to accomplish:','We need to automate our vendor onboarding process.');
+    if(idea && idea.trim()){ const r=Workflow.startProject(idea.trim()); OS_PROJECT=r.projectId; OS_VIEW='dashboard';
+      toast(`Discovery proposed ${r.discovered.length} item(s) — review and accept them in Knowledge.`); renderOS(); } };
   osSidebar(); osMain();
 }
 function osSidebar(){
@@ -76,7 +81,13 @@ function osDashboard(p, body){
   const dim=(label,v)=>`<div class="dim-row"><span>${label}</span><div class="bar"><i style="width:${v}%;background:${v>=75?'var(--ok)':v>=50?'var(--warn)':'var(--bad)'}"></i></div><span class="num">${v}%</span></div>`;
   const card=(t,rows)=>`<div class="card"><h3 class="sec" style="margin-top:0">${t}</h3>${rows}</div>`;
   const kv=(k,v,cls)=>`<div class="os-kv"><span>${k}</span><b class="${cls||''}">${v}</b></div>`;
+  const proposed=Model.listObjects(p.id).filter(o=>o.status==='ai_proposed').length;
   body.innerHTML=`
+    <div class="toolbar">
+      <button class="btn sm" id="os-runagents">🤖 Run BA agents</button>
+      ${proposed?`<button class="btn ghost sm" id="os-acceptall">Accept all proposals (${proposed})</button>`:''}
+      <span class="dim">Agents propose requirements, tests, and conflicts — nothing is approved without you.</span>
+    </div>
     <div class="os-dash">
       <div class="card os-readycard">${ring}
         <div class="os-issues"><h3 class="sec" style="margin-top:0">Primary issues</h3>
@@ -92,6 +103,11 @@ function osDashboard(p, body){
         ${dim('Requirement quality',h.dimensions.requirementsQuality)}${dim('Test coverage',h.dimensions.testCoverage)}${dim('Objective traceability',h.dimensions.traceability)}${dim('Document freshness',h.dimensions.documentFreshness)}${dim('Conflict-free',h.dimensions.conflictFree)}
       </div>
     </div>`;
+  if(E('os-runagents')) E('os-runagents').onclick=()=>{ if(typeof Workflow==='undefined'){ toast('Workflow engine unavailable.'); return; }
+    const r=Workflow.run(p.id, {generateDocuments:false});
+    toast(`Agents: +${r.steps.requirementDiscovery.created} requirements, +${r.steps.testDesign.testCases} tests, ${r.steps.conflicts?r.steps.conflicts.recorded:0} conflicts recorded. Readiness ${r.review?r.review.readiness+'%':'n/a'}.`);
+    osMain(); };
+  if(E('os-acceptall')) E('os-acceptall').onclick=()=>{ const n=Workflow.acceptAll(p.id,'Mujtaba'); toast(`Accepted ${n} proposal(s).`); osMain(); };
 }
 
 /* ---- knowledge / objects + inspector ---- */
@@ -112,8 +128,11 @@ function osInspector(p, el){
   const rel=Model.relationshipsOf(p.id, o.id);
   const line=e=>{ const other=Model.getObject(p.id, e.from===o.id?e.to:e.from); return other?`<li><span class="mono">${esc(other.displayId)}</span> <span class="dim">${esc(e.type)}</span> ${esc((other.title||'').slice(0,50))}</li>`:''; };
   const gapsFor=(typeof Gaps!=='undefined')?Gaps.detectGaps(p.id).all.filter(g=>g.objectId===o.id):[];
+  const proposed = o.status==='ai_proposed';
   el.innerHTML=`
     <div class="os-insp-h"><span class="mono">${esc(o.displayId)}</span> <strong>${esc(o.title||'')}</strong></div>
+    ${proposed?`<div class="action-box" style="margin:0 0 10px"><strong>AI proposal</strong> — accept to add it to the project, or reject.
+      <div style="margin-top:8px;display:flex;gap:8px"><button class="btn sm" id="os-accept">Accept</button><button class="btn ghost sm" id="os-reject">Reject</button></div></div>`:''}
     <p>${esc(o.description||'')}</p>
     ${typeof Provenance!=='undefined'?Provenance.evidenceHtml(o):''}
     <h3 class="sec">Traceability</h3>
@@ -122,6 +141,8 @@ function osInspector(p, el){
     ${gapsFor.length?`<h3 class="sec">Gaps</h3><ul class="itemlist warn">${gapsFor.map(g=>`<li><span class="li-main">${esc(g.message)}</span><span class="li-sub">${esc(g.recommendation||'')}</span></li>`).join('')}</ul>`:''}
     <h3 class="sec">History (v${o.version})</h3>
     <ul class="os-hist">${(o.attrs&&o.attrs.history||[]).slice().reverse().map(h=>`<li><span class="mono">v${h.version}</span> ${esc(h.changeReason||'')} <span class="dim">${esc((h.at||'').slice(0,10))}</span></li>`).join('')||'<li class="dim">—</li>'}</ul>`;
+  if(E('os-accept')) E('os-accept').onclick=()=>{ Workflow.accept(p.id, o.id, 'Mujtaba'); toast('Accepted → under review.'); osObjects(p, E('os-body')); };
+  if(E('os-reject')) E('os-reject').onclick=()=>{ Workflow.reject(p.id, o.id, 'Mujtaba'); toast('Rejected.'); osObjects(p, E('os-body')); };
 }
 
 /* ---- questions ---- */
