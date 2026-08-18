@@ -30,10 +30,13 @@ function renderOS(){
      <section class="os-main" id="os-main"></section>
    </div>`;
   E('os-new').onclick=()=>{ const name=prompt('Project name:','New Analysis Project'); if(name){ const p=Model.createProject({name, meta:{project:name}}); OS_PROJECT=p.id; OS_VIEW='dashboard'; renderOS(); } };
-  E('os-idea').onclick=()=>{ if(typeof Workflow==='undefined'){ toast('Workflow engine unavailable.'); return; }
+  E('os-idea').onclick=async()=>{ if(typeof Workflow==='undefined'){ toast('Workflow engine unavailable.'); return; }
     const idea=prompt('Describe what you are trying to accomplish:','We need to automate our vendor onboarding process.');
-    if(idea && idea.trim()){ const r=Workflow.startProject(idea.trim()); OS_PROJECT=r.projectId; OS_VIEW='dashboard';
-      toast(`Discovery proposed ${r.discovered.length} item(s) — review and accept them in Knowledge.`); renderOS(); } };
+    if(!idea || !idea.trim()) return;
+    toast((typeof AI!=='undefined'&&AI.available)?'✨ Discovering with AI…':'Discovering…');
+    try{ const r=await Workflow.startProject(idea.trim()); OS_PROJECT=r.projectId; OS_VIEW='dashboard';
+      toast(`Discovery proposed ${r.discovered.length} item(s)${r.source==='ai'?' (AI-assisted)':''} — review and accept them in Knowledge.`); renderOS(); }
+    catch(e){ toast('Discovery failed: '+e.message); } };
   osSidebar(); osMain();
 }
 function osSidebar(){
@@ -103,10 +106,14 @@ function osDashboard(p, body){
         ${dim('Requirement quality',h.dimensions.requirementsQuality)}${dim('Test coverage',h.dimensions.testCoverage)}${dim('Objective traceability',h.dimensions.traceability)}${dim('Document freshness',h.dimensions.documentFreshness)}${dim('Conflict-free',h.dimensions.conflictFree)}
       </div>
     </div>`;
-  if(E('os-runagents')) E('os-runagents').onclick=()=>{ if(typeof Workflow==='undefined'){ toast('Workflow engine unavailable.'); return; }
-    const r=Workflow.run(p.id, {generateDocuments:false});
-    toast(`Agents: +${r.steps.requirementDiscovery.created} requirements, +${r.steps.testDesign.testCases} tests, ${r.steps.conflicts?r.steps.conflicts.recorded:0} conflicts recorded. Readiness ${r.review?r.review.readiness+'%':'n/a'}.`);
-    osMain(); };
+  if(E('os-runagents')) E('os-runagents').onclick=async()=>{ if(typeof Workflow==='undefined'){ toast('Workflow engine unavailable.'); return; }
+    const btn=E('os-runagents'); btn.disabled=true; btn.textContent='🤖 Running…';
+    toast((typeof AI!=='undefined'&&AI.available)?'✨ Agents working with AI…':'Running BA agents…');
+    try{ const r=await Workflow.run(p.id, {generateDocuments:false});
+      const rw=r.steps.rewrites?`, ${r.steps.rewrites.rewrites} rewrite suggestion(s)`:'';
+      toast(`Agents${r.aiUsed?' (AI)':''}: +${r.steps.requirementDiscovery.created} requirements, +${r.steps.testDesign.testCases} tests, ${r.steps.conflicts?r.steps.conflicts.recorded:0} conflicts recorded${rw}. Readiness ${r.review?r.review.readiness+'%':'n/a'}.`);
+      osMain(); }
+    catch(e){ toast('Agents failed: '+e.message); btn.disabled=false; btn.textContent='🤖 Run BA agents'; } };
   if(E('os-acceptall')) E('os-acceptall').onclick=()=>{ const n=Workflow.acceptAll(p.id,'Mujtaba'); toast(`Accepted ${n} proposal(s).`); osMain(); };
 }
 
@@ -134,6 +141,9 @@ function osInspector(p, el){
     ${proposed?`<div class="action-box" style="margin:0 0 10px"><strong>AI proposal</strong> — accept to add it to the project, or reject.
       <div style="margin-top:8px;display:flex;gap:8px"><button class="btn sm" id="os-accept">Accept</button><button class="btn ghost sm" id="os-reject">Reject</button></div></div>`:''}
     <p>${esc(o.description||'')}</p>
+    ${o.attrs&&o.attrs.aiRewrite?`<div class="action-box" style="margin:0 0 10px"><strong>✨ AI rewrite suggestion</strong>${o.attrs.aiRewrite.confidence!=null?` <span class="dim">(confidence ${Math.round(o.attrs.aiRewrite.confidence*100)}%)</span>`:''}
+      <div style="margin:6px 0">${esc(o.attrs.aiRewrite.text)}</div>
+      <button class="btn sm" id="os-applyrw">Apply rewrite</button></div>`:''}
     ${typeof Provenance!=='undefined'?Provenance.evidenceHtml(o):''}
     <h3 class="sec">Traceability</h3>
     <div class="os-trace"><div><div class="dim">Upstream</div><ul class="os-rel">${rel.upstream.map(line).join('')||'<li class="dim">—</li>'}</ul></div>
@@ -143,6 +153,7 @@ function osInspector(p, el){
     <ul class="os-hist">${(o.attrs&&o.attrs.history||[]).slice().reverse().map(h=>`<li><span class="mono">v${h.version}</span> ${esc(h.changeReason||'')} <span class="dim">${esc((h.at||'').slice(0,10))}</span></li>`).join('')||'<li class="dim">—</li>'}</ul>`;
   if(E('os-accept')) E('os-accept').onclick=()=>{ Workflow.accept(p.id, o.id, 'Mujtaba'); toast('Accepted → under review.'); osObjects(p, E('os-body')); };
   if(E('os-reject')) E('os-reject').onclick=()=>{ Workflow.reject(p.id, o.id, 'Mujtaba'); toast('Rejected.'); osObjects(p, E('os-body')); };
+  if(E('os-applyrw')) E('os-applyrw').onclick=()=>{ Agents.applyRewrite(p.id, o.id); toast('Rewrite applied.'); osObjects(p, E('os-body')); };
 }
 
 /* ---- questions ---- */

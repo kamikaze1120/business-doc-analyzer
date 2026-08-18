@@ -15,12 +15,12 @@
   function M(){ return root.Model; }
 
   // Step 1-2: create a project from a problem statement and run discovery.
-  function startProject(problemStatement, name){
+  async function startProject(problemStatement, name){
     if(!root.Model||!root.Agents) throw new Error('model/agents not loaded');
     const p=M().createProject({ name:name||(String(problemStatement||'New project').slice(0,60)),
       meta:{project:name||String(problemStatement||'').slice(0,60), createdFrom:'workflow'} });
-    const disc=root.Agents.discovery(p.id, problemStatement);
-    return { projectId:p.id, discovered:disc.created };
+    const disc=await root.Agents.discovery(p.id, problemStatement);
+    return { projectId:p.id, discovered:disc.created, source:disc.source };
   }
 
   // Step 3: what do we know vs. still need to find out?
@@ -38,15 +38,17 @@
   }
 
   // Steps 4-9: run the agent pipeline (proposals only) and return a review.
-  function run(projectId, opts){
+  async function run(projectId, opts){
     opts=opts||{}; const A=root.Agents; const out={ steps:{} };
-    out.steps.requirementDiscovery = A.requirements(projectId);
-    out.steps.testDesign = A.testDesigner(projectId);
+    out.steps.requirementDiscovery = await A.requirements(projectId);
+    out.steps.testDesign = await A.testDesigner(projectId);
     out.steps.conflicts = A.conflictAnalyst(projectId);
-    out.steps.quality = A.qualityReviewer(projectId) ? {avgQuality:A.qualityReviewer(projectId).aggregate.avgQuality, untestable:A.qualityReviewer(projectId).aggregate.untestable} : null;
+    const q=A.qualityReviewer(projectId); out.steps.quality = q ? {avgQuality:q.aggregate.avgQuality, untestable:q.aggregate.untestable} : null;
+    if(A.qualityRewrites) out.steps.rewrites = await A.qualityRewrites(projectId);
     if(opts.generateDocuments) out.steps.documents = (A.documentGenerator(projectId, opts.documentTypes)||[]).map(d=>d.title);
     out.review = review(projectId);
     out.proposed = M().listObjects(projectId).filter(o=>o.status==='ai_proposed').length;
+    out.aiUsed = (typeof AI!=='undefined' && AI.available) || false;
     return out;
   }
 
