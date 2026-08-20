@@ -351,6 +351,7 @@ input[type=search]{min-width:230px}
   <div class="hdr-controls">
     <button class="btn ghost sm hidden" id="mode-doc">Document</button>
     <button class="btn ghost sm hidden" id="mode-os">🏛 Analyst OS</button>
+    <button class="btn ghost sm hidden" id="mode-folder" title="Connect a local folder and auto-ingest every document into the Brain + Truth Model">📂 Folder</button>
     <button class="btn ghost sm hidden" id="mode-projects">📁 Projects</button>
     <button class="btn ghost sm hidden" id="mode-brain">🧠 Brain</button>
     <button class="btn ghost sm hidden" id="settings-btn" title="AI settings">⚙︎</button>
@@ -379,6 +380,7 @@ input[type=search]{min-width:230px}
   <div id="brain" class="hidden"></div>
   <div id="projects" class="hidden"></div>
   <div id="os" class="hidden"></div>
+  <input type="file" id="folder-input" webkitdirectory directory multiple class="hidden">
 </main>
 
 <div class="modal hidden" id="settings">
@@ -456,6 +458,7 @@ input[type=search]{min-width:230px}
 <script src="js/qa.js"></script>
 <script src="js/projects.js"></script>
 <script src="js/osui.js"></script>
+<script src="js/folder.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

@@ -11,7 +11,7 @@ const EMPTY_EL = {objectives:[],scopeIn:[],scopeOut:[],stakeholders:[],milestone
   assumptions:[],constraints:[],dependencies:[],personas:[],features:[],metrics:[],stories:[],actions:[],questions:[]};
 
 /* ---------- Master analyze pipeline ---------- */
-function analyze(text, fileName, fileSize){
+function analyze(text, fileName, fileSize, opts){
   const norm=normalize(text);
   const lines=norm.split('\n');
   const sections=detectSections(lines);
@@ -36,7 +36,7 @@ function analyze(text, fileName, fileSize){
   STATE={meta,fileName,fileSize,words,lines:lines.length,sections,reqs,steps,scen,tests,
          gaps,actors,score:scoring.score,dims:scoring.dims,el,docType,activeType:docType.id,
          norm};                       // keep normalized text so added requirements can recompute
-  mount();
+  if(!(opts&&opts.silent)) mount();   // bulk folder ingest builds STATE without rendering each file
 }
 
 /* ---------- Mount the adaptive UI ---------- */
@@ -247,6 +247,7 @@ function updateChrome(){
   const s=E('ai-status');
   // Brain + settings are always available in the browser (no server needed).
   ['mode-doc','mode-os','mode-projects','mode-brain','settings-btn'].forEach(id=>E(id).classList.remove('hidden'));
+  if(E('mode-folder') && typeof Folder!=='undefined') E('mode-folder').classList.remove('hidden');
   if(STATE) E('addbrain').classList.toggle('hidden', !brainOn());
   if(AI.available){ s.textContent=AI.label; s.className='pill on'; }
   else if(brainOn()){ s.textContent='Brain on · AI off'; s.className='pill'; }
@@ -334,8 +335,46 @@ function openSettings(){
     if(r.ok){ E('settings').classList.add('hidden'); if(!E('brain').classList.contains('hidden')) renderBrain(); } };
 }
 
+/* ---------- Folder connect (optional bulk ingest) ---------- */
+function reportFolder(r){
+  if(!r || r.ok===false){
+    if(r&&r.cancelled) return;
+    if(r&&r.denied){ toast('Folder access was not granted.'); return; }
+    if(r&&r.none){ toast('No folder connected yet — pick one first.'); return; }
+    return;
+  }
+  const x=r.result||{};
+  toast(`Folder “${esc(r.folder||'')}”: ingested ${x.ingested}/${x.total} document(s) into the Brain${x.ptm?' + Truth Model':''}${x.skipped?` · ${x.skipped} skipped`:''}.`);
+  if(typeof setMode==='function') setMode('brain');
+}
+async function onConnectFolder(){
+  if(typeof Folder==='undefined'){ toast('Folder ingest unavailable.'); return; }
+  const onProgress=(n,t,name)=>{ if(n===1||n%5===0||n===t) toast(`Reading ${n}/${t}: ${esc(name||'')}…`); };
+  if(Folder.SUPPORT){
+    try{
+      if(await Folder.hasConnected()){
+        if(confirm('Re-scan the connected folder for new/updated documents?\n\n(Press Cancel to pick a different folder instead.)')){
+          reportFolder(await Folder.rescan({onProgress})); return;
+        }
+      }
+      const r=await Folder.connect({onProgress});
+      if(r.unsupported){ E('folder-input').click(); return; }
+      reportFolder(r);
+    }catch(e){ toast('Folder ingest failed: '+e.message); }
+  } else {
+    E('folder-input').click();   // fallback: one-time folder picker
+  }
+}
+
 /* ---------- Boot ---------- */
 E('reset').onclick=resetAll;
+if(E('mode-folder')) E('mode-folder').onclick=onConnectFolder;
+if(E('folder-input')) E('folder-input').onchange=async e=>{ const files=e.target.files; if(!files||!files.length) return;
+  toast('Reading folder…');
+  try{ const r=await Folder.ingestFileList(files, {folderName:'Selected folder', onProgress:(n,t,name)=>{ if(n===1||n%5===0||n===t) toast(`Reading ${n}/${t}…`); }});
+    reportFolder({ok:true, folder:'Selected folder', result:r}); }
+  catch(err){ toast('Folder ingest failed: '+err.message); }
+  finally{ e.target.value=''; } };
 E('export').onclick=exportReport;
 E('exportcsv').onclick=exportCSV;
 E('addbrain').onclick=addToBrain;
