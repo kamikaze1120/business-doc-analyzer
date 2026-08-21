@@ -23,6 +23,7 @@ async function renderBrain(){
   const docs = Object.values(ix.docs||{});
   const nodes = Object.values(ix.nodes||{});
   const recurring = nodes.filter(n=>n.docs.length>1);
+  let dupCount=0; try{ if(typeof Store!=='undefined' && Store.findDuplicates) dupCount=Store.findDuplicates().reduce((n,g)=>n+(g.length-1),0); }catch(e){}
 
   if(!docs.length){
     host.innerHTML = `<div class="card" style="text-align:center;padding:48px">
@@ -46,9 +47,11 @@ async function renderBrain(){
   <div class="toolbar">
     <div class="seg"><button id="bv-graph" class="${BRAIN_VIEW==='graph'?'on':''}">🕸 Graph</button><button id="bv-list" class="${BRAIN_VIEW==='list'?'on':''}">☰ List</button></div>
     <button class="btn sm" id="brain-compose">＋ Compose document</button>
+    ${dupCount?`<button class="btn ghost sm" id="brain-dedupe">🧹 Remove ${dupCount} duplicate${dupCount===1?'':'s'}</button>`:''}
     <span class="dim">${recurring.length} cross-referenced · ${(ix.edges||[]).length} links</span>
   </div>
   <div id="brain-body"></div>`;
+  const dd=E('brain-dedupe'); if(dd) dd.onclick=()=>{ const r=Store.removeDuplicates(); toast(`Removed ${r.removed} duplicate document(s) from the brain.`); renderBrain(); };
 
   const seg=()=>{ E('bv-graph').classList.toggle('on',BRAIN_VIEW==='graph'); E('bv-list').classList.toggle('on',BRAIN_VIEW==='list'); };
   E('bv-graph').onclick=()=>{ BRAIN_VIEW='graph'; seg(); drawBody(); };
@@ -79,7 +82,8 @@ async function renderBrain(){
       </div>
     </div>`;
     const docChip=d=>`<span class="node-chip doc" data-id="${esc(d.id)}" data-type="document" title="${esc(d.file||'')}">
-        ${esc(d.title)} <span class="dim">· ${esc(d.docTypeName||d.docType||'')}</span></span>`;
+        ${esc(d.title)} <span class="dim">· ${esc(d.docTypeName||d.docType||'')}</span>
+        <span class="chip-del" data-del="${esc(d.id)}" title="Remove this document from the brain">✕</span></span>`;
     const entChip=n=>`<span class="node-chip" data-id="${esc(n.id)}" data-type="${esc(n.type)}">
         ${ENTITY_META[n.type]?ENTITY_META[n.type].icon:''} ${esc(n.title)} ${n.docs.length>1?`<span class="pill hot">${n.docs.length} docs</span>`:''}</span>`;
     const draw=(q='')=>{
@@ -90,16 +94,28 @@ async function renderBrain(){
       Object.keys(ENTITY_META).forEach(t=>{ const el=E('brain-'+t); if(!el) return;
         el.innerHTML = nodes.filter(n=>n.type===t && n.title.toLowerCase().includes(q)).map(entChip).join('')||'<span class="dim">No matches</span>'; });
       E('braincount').textContent = q?`${dm.length} document match${dm.length===1?'':'es'}`:'';
+      body.querySelectorAll('.node-chip').forEach(bindChip);
+      bindDeletes(body);
     };
     draw();
     E('brainq').addEventListener('input', e=>draw(e.target.value));
-    body.querySelectorAll('.node-chip').forEach(bindChip);
   }
   drawBody();
 }
 
 function bindChip(el){
   el.onclick = ()=>openNote(el.dataset.id, el.dataset.type);
+}
+// Wire the ✕ delete affordance on document chips (removes from the brain).
+function bindDeletes(root){
+  root.querySelectorAll('.chip-del').forEach(x=>x.onclick=ev=>{
+    ev.stopPropagation();
+    const id=x.dataset.del;
+    if(confirm('Remove this document from the brain?\n\nIts cross-referenced entities that appear in no other document are removed too. This does not delete the original file.')){
+      const r=Store.removeDoc(id);
+      if(r.ok){ toast('Removed from the brain.'); renderBrain(); } else toast('Could not remove: '+(r.error||''));
+    }
+  });
 }
 
 async function openNote(id, type){

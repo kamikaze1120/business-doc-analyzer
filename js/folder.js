@@ -46,8 +46,9 @@
   /* ---- core: ingest a list of File objects (UI-agnostic, testable) ---- */
   async function ingestFileList(files, opts){
     opts=opts||{};
-    const list=[...files].filter(f=>f && EXT.test(f.name||''));
-    const res={ total:list.length, ingested:0, skipped:0, brain:0, ptm:0, errors:[] };
+    const all=[...files].filter(Boolean);
+    const list=all.filter(f=>EXT.test(f.name||''));       // unsupported types auto-excluded
+    const res={ total:list.length, unsupported: all.length-list.length, ingested:0, skipped:0, brain:0, ptm:0, duplicatesRemoved:0, errors:[] };
     const proj = (typeof Ingest!=='undefined') ? folderProject(opts.folderName) : null;
     for(const f of list){
       try{
@@ -60,6 +61,8 @@
         if(opts.onProgress) opts.onProgress(res.ingested, res.total, f.name);
       }catch(e){ res.errors.push((f.name||'file')+': '+e.message); res.skipped++; }
     }
+    // Auto-remove duplicate documents that bulk ingest may have produced.
+    if(typeof Store!=='undefined' && Store.removeDuplicates){ try{ res.duplicatesRemoved=Store.removeDuplicates().removed; }catch(e){} }
     res.projectId = proj ? proj.id : null;
     return res;
   }

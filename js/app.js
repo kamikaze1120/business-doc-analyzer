@@ -344,7 +344,10 @@ function reportFolder(r){
     return;
   }
   const x=r.result||{};
-  toast(`Folder “${esc(r.folder||'')}”: ingested ${x.ingested}/${x.total} document(s) into the Brain${x.ptm?' + Truth Model':''}${x.skipped?` · ${x.skipped} skipped`:''}.`);
+  toast(`Folder “${esc(r.folder||'')}”: ${x.ingested} doc(s) → Brain${x.ptm?' + Truth Model':''}`+
+    `${x.unsupported?` · ${x.unsupported} unsupported skipped`:''}`+
+    `${x.duplicatesRemoved?` · ${x.duplicatesRemoved} duplicate(s) removed`:''}`+
+    `${x.skipped?` · ${x.skipped} empty/failed`:''}.`);
   if(typeof setMode==='function') setMode('brain');
 }
 async function onConnectFolder(){

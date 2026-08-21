@@ -165,8 +165,52 @@ const Store = (()=>{
   function saveProject(p){ load(); p.updated=new Date().toISOString(); if(!p.created) p.created=p.updated;
     (db.projects=db.projects||{})[p.id]=p; save(); return p; }
   function deleteProject(id){ load(); if(db.projects) delete db.projects[id]; save(); }
+
+  /* ---- document removal + duplicate cleanup ---- */
+  function _norm(s){ return String(s||'').toLowerCase().replace(/[^a-z0-9 ]+/g,' ').replace(/\s+/g,' ').trim(); }
+  // A content fingerprint for a stored document (requirements, else objectives+
+  // stakeholders). Returns null when there isn't enough to fingerprint safely.
+  function docSignature(id){ load(); const e=db.data[id]||{};
+    const reqs=(e.requirements||[]).map(r=>_norm(r.text||'')).filter(Boolean).sort();
+    if(reqs.length) return 'r:'+reqs.join('|');
+    const objs=(e.objectives||[]).map(o=>_norm(o.text||o)).filter(Boolean).sort();
+    const stks=(e.stakeholders||[]).map(s=>_norm(s.role||s.name||s)).filter(Boolean).sort();
+    const sig=objs.concat(stks); return sig.length? 'o:'+sig.join('|') : null;
+  }
+  // Remove a document and cascade: its note, entities, clarifications, edges,
+  // and any entity node that no longer appears in any document.
+  function removeDoc(docId){
+    load(); const ix=db.index; if(!ix.docs[docId]) return {ok:false, error:'no such document'};
+    delete ix.docs[docId]; delete db.data[docId]; delete db.clar[docId]; delete db.notes['documents/'+docId];
+    ix.edges = (ix.edges||[]).filter(e=> e.from!==docId && e.to!==docId);
+    let removedEntities=0;
+    Object.keys(ix.nodes).forEach(nid=>{ const n=ix.nodes[nid];
+      if(n.docs && n.docs.includes(docId)){ n.docs=n.docs.filter(d=>d!==docId); n.count=n.docs.length;
+        if(n.docs.length===0){ delete ix.nodes[nid]; delete db.notes['entities/'+n.type+'/'+slug(n.title)];
+          ix.edges = ix.edges.filter(e=> e.from!==nid && e.to!==nid); removedEntities++; }
+        else { writeEntityNote(ix, n); } }
+    });
+    ix.updated=new Date().toISOString(); save();
+    return {ok:true, docId, removedEntities};
+  }
+  // Groups of documents that share a content fingerprint (>1 = duplicates).
+  function findDuplicates(){ load(); const groups={};
+    Object.keys(db.index.docs).forEach(id=>{ const sig=docSignature(id); if(sig) (groups[sig]=groups[sig]||[]).push(id); });
+    return Object.values(groups).filter(g=>g.length>1)
+      .map(g=>g.map(id=>({id, title:db.index.docs[id].title, words:db.index.docs[id].words||0})));
+  }
+  // Auto-remove duplicates: keep the fullest (most words, else most recent) of
+  // each group and remove the rest.
+  function removeDuplicates(){ load(); const groups=findDuplicates(); const removed=[];
+    groups.forEach(g=>{ const ids=g.map(x=>x.id);
+      ids.sort((a,b)=> (db.index.docs[b].words||0)-(db.index.docs[a].words||0) || (db.index.docs[b].ingested||'').localeCompare(db.index.docs[a].ingested||''));
+      ids.slice(1).forEach(id=>{ removeDoc(id); removed.push(id); }); });
+    return {removed:removed.length, removedIds:removed};
+  }
+
   return {ingest, index, note, saveAnswer, getDoc, saveAI, exportAll, importAll, clear, available, slug, data, docMeta,
-          projects, getProject, saveProject, deleteProject};
+          projects, getProject, saveProject, deleteProject,
+          removeDoc, findDuplicates, removeDuplicates, docSignature};
 })();
 // Also expose for Node (CommonJS) so the brain is unit-testable; browsers keep
 // using the classic `const Store` global unchanged.
