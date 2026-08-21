@@ -14,7 +14,8 @@
   function M(){ return root.Model; }
   function pct(n,d){ return d? Math.round(n/d*100):0; }
 
-  function score(projectId){
+  function score(projectId){ const m=M(); return (m&&m.memo)? m.memo(projectId,'health',()=>_score(projectId)) : _score(projectId); }
+  function _score(projectId){
     const model=M(); if(!model||!model.getProject(projectId)) return null;
     const objs=model.listObjects(projectId);
     const reqs=objs.filter(o=>REQ.includes(o.type));

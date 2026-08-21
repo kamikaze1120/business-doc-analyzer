@@ -18,6 +18,9 @@
   // Update an object and cascade. Returns {blocked} or a structured change result.
   function updateObject(projectId, id, patch, opts){
     opts=opts||{}; const before=M().getObject(projectId,id);
+    // Snapshot the version NOW — `before` is a live reference into the model's
+    // store cache, so the in-place update below would otherwise bump it too.
+    const beforeVersion = before ? before.version : null;
     const hBefore=readiness(projectId, opts.health!==false);
     let res;
     if(root.Impact) res=root.Impact.applyChange(projectId, id, patch, opts);
@@ -27,7 +30,7 @@
     const hAfter=readiness(projectId, opts.health!==false);
     return {
       blocked:false, object:res.object,
-      version:{ from: before?before.version:null, to: res.object.version },
+      version:{ from: beforeVersion, to: res.object.version },
       affected: (res.impact&&res.impact.affected)||[],
       documents: (res.impact&&res.impact.documents)||[],
       staleDocuments: res.staleDocuments||[],

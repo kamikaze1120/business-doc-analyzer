@@ -50,15 +50,40 @@
   function ST(){ return root.AppStorage; }
   function UUID(){ return root.UID.uuid(); }
 
-  /* ---- persistence ---- */
+  /* ---- persistence ----
+     Parse cache: getJSON() re-parses the ENTIRE truth store on every call, and a
+     single Analyst-OS render fans out to O(n²) read-only engines (health, gaps,
+     conflicts, questions, traceability, impact) that each call db() thousands of
+     times. We cache the parsed store keyed by its raw serialized string, so a
+     render that doesn't write does exactly ONE parse. The key is the cheap
+     get() (a string read); any write — ours or an external one (import,
+     portability) — changes that string and invalidates the cache automatically. */
+  let _rawCache=null, _memCache=null, _rev=0;
   function db(){
+    let raw=null; try{ raw = ST().get(KEY); }catch(e){ raw=null; }
+    if(raw!=null && raw===_rawCache && _memCache) return _memCache;   // unchanged since last parse
     let d = ST().getJSON(KEY, null);
     if(!d || typeof d!=='object'){ d = { schemaVersion:SCHEMA_VERSION, projects:{} }; }
     if(!d.projects) d.projects={};
     if(d.schemaVersion==null) d.schemaVersion=SCHEMA_VERSION;
+    _rawCache=raw; _memCache=d; _rev++;                              // store changed (write, external, or first load)
     return d;
   }
-  function persist(d){ d.schemaVersion=SCHEMA_VERSION; return ST().setJSON(KEY, d); }
+  function persist(d){ d.schemaVersion=SCHEMA_VERSION; const r=ST().setJSON(KEY, d);
+    _memCache=d; _rev++; try{ _rawCache=ST().get(KEY); }catch(e){ _rawCache=null; } return r; }
+
+  /* Monotonic store revision — changes on every write (ours or external). Pure,
+     revision-keyed analytics (health, conflicts, gaps, questions, traceability,
+     duplicates) memoize on this so a render pass — or a tab switch that changes
+     no data — recomputes each engine at most once instead of the 3–4× the OS
+     used to trigger. */
+  function revision(){ db(); return _rev; }
+  const _memoStore={};
+  function memo(projectId, tag, fn){
+    const rev=revision(); const key=projectId+'|'+tag; const hit=_memoStore[key];
+    if(hit && hit.rev===rev) return hit.val;
+    const val=fn(); _memoStore[key]={rev, val}; return val;
+  }
 
   /* ---- projects ---- */
   function listProjects(){ const d=db(); return Object.values(d.projects).sort((a,b)=>(b.updatedAt||'').localeCompare(a.updatedAt||'')); }
@@ -248,6 +273,8 @@
     addRelationship, removeRelationship, relationshipsOf, relatedObjects,
     // queries
     counts, stats, clearAll,
+    // performance: store revision + revision-keyed memoization for pure analytics
+    revision, memo,
     _db: db, _persist: persist
   };
   root.Model = Model;

@@ -29,7 +29,8 @@
       if(u==='k'||u==='thousand') v*=1e3; if(u==='m'||u==='million') v*=1e6; out.push({value:v, unit:u||''}); } return out; }
   function disjoint(a,b){ return a.length && b.length && !a.some(x=>b.includes(x)); }
 
-  function detectConflicts(projectId){
+  function detectConflicts(projectId){ const m=M(); return (m&&m.memo)? m.memo(projectId,'conflicts',()=>_detectConflicts(projectId)) : _detectConflicts(projectId); }
+  function _detectConflicts(projectId){
     const model=M(); if(!model||!model.getProject(projectId)) return {items:[],summary:{total:0}};
     const objs = model.listObjects(projectId).filter(o=>CONSIDER.includes(o.type));
     const items=[]; let seq=0;

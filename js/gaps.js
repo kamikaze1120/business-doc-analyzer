@@ -83,7 +83,8 @@
       message:(o,ctx)=>`${o.displayId} scores low on quality (${ctx.quality[o.id].scores.overall})`, recommendation:'Tighten clarity, completeness, and measurability.' }
   ];
 
-  function detectGaps(projectId){
+  function detectGaps(projectId){ const m=M(); return (m&&m.memo)? m.memo(projectId,'gaps',()=>_detectGaps(projectId)) : _detectGaps(projectId); }
+  function _detectGaps(projectId){
     const model=M(); const project=model && model.getProject(projectId);
     if(!project) return {structural:[],semantic:[],crossArtifact:[],all:[],summary:{total:0}};
     const objs=model.listObjects(projectId);

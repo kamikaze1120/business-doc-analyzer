@@ -105,6 +105,11 @@
     'business_requirement','data_requirement','reporting_requirement','business_rule'];
 
   function assessProject(projectId, opts){
+    // Memoize the default (no-opts) assessment — it's the hot path called from Gaps.
+    const _M0=root.Model; if(!opts && _M0 && _M0.memo) return _M0.memo(projectId,'intel',()=>_assessProject(projectId));
+    return _assessProject(projectId, opts);
+  }
+  function _assessProject(projectId, opts){
     opts=opts||{}; const M=root.Model; if(!M) return {items:[], aggregate:{count:0}};
     const items=[]; let sum=0, untestable=0, ambiguous=0;
     M.listObjects(projectId).filter(o=>REQUIREMENTY.includes(o.type)).forEach(o=>{

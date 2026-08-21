@@ -26,6 +26,10 @@
   async function saveHandle(h){ try{ const db=await idb(); await new Promise((res,rej)=>{ const t=db.transaction('handles','readwrite'); t.objectStore('handles').put(h,'root'); t.oncomplete=res; t.onerror=()=>rej(t.error); }); }catch(e){} }
   async function loadHandle(){ try{ const db=await idb(); return await new Promise(res=>{ const t=db.transaction('handles','readonly'); const rq=t.objectStore('handles').get('root'); rq.onsuccess=()=>res(rq.result||null); rq.onerror=()=>res(null); }); }catch(e){ return null; } }
   async function hasConnected(){ return !!(await loadHandle()); }
+  async function connectedName(){ try{ const h=await loadHandle(); return h?h.name:null; }catch(e){ return null; } }
+  // Disconnect: forget the remembered folder handle so the user is no longer
+  // locked to it. Does not touch anything already ingested into the Brain/PTM.
+  async function forget(){ try{ const db=await idb(); await new Promise((res,rej)=>{ const t=db.transaction('handles','readwrite'); t.objectStore('handles').delete('root'); t.oncomplete=res; t.onerror=()=>rej(t.error); }); return true; }catch(e){ return false; } }
 
   async function collect(dirHandle, out){
     for await (const entry of dirHandle.values()){
@@ -84,7 +88,7 @@
     return {ok:true, folder:h.name, result:await ingestFileList(files, Object.assign({folderName:h.name}, opts))};
   }
 
-  const Folder = { SUPPORT, EXT, ingestFileList, connect, rescan, hasConnected, loadHandle, folderProject };
+  const Folder = { SUPPORT, EXT, ingestFileList, connect, rescan, hasConnected, connectedName, forget, loadHandle, folderProject };
   root.Folder = Folder;
   if(typeof module!=='undefined' && module.exports) module.exports = Folder;
 })(typeof globalThis!=='undefined' ? globalThis : this);

@@ -22,7 +22,8 @@
     return out;
   }
 
-  function coverage(projectId){
+  function coverage(projectId){ const m=M(); return (m&&m.memo)? m.memo(projectId,'trace',()=>_coverage(projectId)) : _coverage(projectId); }
+  function _coverage(projectId){
     const model=M(); if(!model||!model.getProject(projectId)) return null;
     const objs=model.listObjects(projectId);
     const objectives=objs.filter(o=>o.type==='business_objective');

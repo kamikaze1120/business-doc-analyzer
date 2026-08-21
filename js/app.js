@@ -349,29 +349,71 @@ function reportFolder(r){
     `${x.duplicatesRemoved?` · ${x.duplicatesRemoved} duplicate(s) removed`:''}`+
     `${x.skipped?` · ${x.skipped} empty/failed`:''}.`);
   if(typeof setMode==='function') setMode('brain');
+  refreshFolderBadge();
 }
-async function onConnectFolder(){
+const folderProgress=(n,t,name)=>{ if(n===1||n%5===0||n===t) toast(`Reading ${n}/${t}: ${esc(name||'')}…`); };
+
+// Reflect a remembered folder on the Folder button (green dot) so its state is
+// visible at a glance, not hidden behind a click.
+async function refreshFolderBadge(){
+  const btn=E('mode-folder'); if(!btn || typeof Folder==='undefined' || !Folder.SUPPORT) return;
+  try{ const name=await Folder.connectedName(); btn.classList.toggle('connected', !!name);
+    btn.title = name ? `Connected: ${name} — click to re-scan, switch, or disconnect` : 'Connect a local folder and auto-ingest every document into the Brain + Truth Model';
+  }catch(e){}
+}
+
+// Open the Folder panel — a clear, non-locking hub: connect, re-scan, switch
+// folder, or disconnect. Replaces the old one-shot confirm() that trapped the
+// first-picked folder with no visible way to change it.
+async function openFolderPanel(){
   if(typeof Folder==='undefined'){ toast('Folder ingest unavailable.'); return; }
-  const onProgress=(n,t,name)=>{ if(n===1||n%5===0||n===t) toast(`Reading ${n}/${t}: ${esc(name||'')}…`); };
-  if(Folder.SUPPORT){
-    try{
-      if(await Folder.hasConnected()){
-        if(confirm('Re-scan the connected folder for new/updated documents?\n\n(Press Cancel to pick a different folder instead.)')){
-          reportFolder(await Folder.rescan({onProgress})); return;
-        }
-      }
-      const r=await Folder.connect({onProgress});
-      if(r.unsupported){ E('folder-input').click(); return; }
-      reportFolder(r);
-    }catch(e){ toast('Folder ingest failed: '+e.message); }
-  } else {
-    E('folder-input').click();   // fallback: one-time folder picker
+  const modal=E('folder-modal'), body=E('folder-body'); if(!modal||!body) return;
+  modal.classList.remove('hidden');
+  body.innerHTML='<div class="dim"><span class="spin"></span> Checking…</div>';
+  const note='<div class="dim" style="font-size:11.5px;margin-top:14px;line-height:1.55">Everything stays on your machine — nothing is uploaded. The browser can’t read your disk silently, so choosing a folder is always one click. Supported files (.docx, .xlsx, .csv, .txt, .md, .pdf) are ingested into the Brain and the Truth Model; anything else is skipped automatically.</div>';
+
+  if(!Folder.SUPPORT){
+    body.innerHTML=`<p>Pick a folder and every supported document inside it is ingested at once.</p>
+      <div style="margin-top:12px"><button class="btn sm" id="fp-pick">📁 Choose a folder…</button></div>
+      <div class="dim" style="font-size:11.5px;margin-top:10px">Your browser doesn’t support re-connecting to a remembered folder, so each scan is a one-time pick. For remembered folders + one-click re-scan, use Chrome or Edge over https.</div>${note}`;
+    E('fp-pick').onclick=()=>{ modal.classList.add('hidden'); E('folder-input').click(); };
+    return;
   }
+
+  const name=await Folder.connectedName();
+  if(name){
+    body.innerHTML=`<div class="kv"><div class="k">Connected folder</div><div class="v"><strong>${esc(name)}</strong></div></div>
+      <p class="dim" style="font-size:12px;margin:8px 0 0">Re-scan to pull in new or updated documents, switch to a different folder, or disconnect to stop remembering this one.</p>
+      <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn sm" id="fp-rescan">🔄 Re-scan for changes</button>
+        <button class="btn ghost sm" id="fp-change">📁 Change folder…</button>
+        <button class="btn ghost sm" id="fp-forget">✖ Disconnect</button>
+      </div>${note}`;
+    E('fp-rescan').onclick=async()=>{ modal.classList.add('hidden'); toast('Re-scanning “'+esc(name)+'”…');
+      try{ reportFolder(await Folder.rescan({onProgress:folderProgress})); }catch(e){ toast('Re-scan failed: '+e.message); } };
+    E('fp-change').onclick=()=>pickNewFolder(modal);
+    E('fp-forget').onclick=async()=>{ await Folder.forget(); toast('Folder disconnected. Nothing already ingested was removed.'); refreshFolderBadge(); openFolderPanel(); };
+  } else {
+    body.innerHTML=`<p>Connect a folder once and every supported document inside it is ingested into the Brain and Truth Model. The folder is remembered, so next time it’s a single re-scan.</p>
+      <div style="margin-top:14px"><button class="btn sm" id="fp-connect">📂 Choose a folder…</button></div>${note}`;
+    E('fp-connect').onclick=()=>pickNewFolder(modal);
+  }
+}
+async function pickNewFolder(modal){
+  modal.classList.add('hidden');
+  try{
+    const r=await Folder.connect({onProgress:folderProgress});
+    if(r&&r.unsupported){ E('folder-input').click(); return; }
+    if(r&&r.cancelled) return;                       // user closed the picker — stay put, nothing locked
+    reportFolder(r);
+  }catch(e){ toast('Folder ingest failed: '+e.message); }
 }
 
 /* ---------- Boot ---------- */
 E('reset').onclick=resetAll;
-if(E('mode-folder')) E('mode-folder').onclick=onConnectFolder;
+if(E('mode-folder')) E('mode-folder').onclick=openFolderPanel;
+if(E('folder-close')) E('folder-close').onclick=()=>E('folder-modal').classList.add('hidden');
+if(E('folder-modal')) E('folder-modal').onclick=e=>{ if(e.target===E('folder-modal')) E('folder-modal').classList.add('hidden'); };
 if(E('folder-input')) E('folder-input').onchange=async e=>{ const files=e.target.files; if(!files||!files.length) return;
   toast('Reading folder…');
   try{ const r=await Folder.ingestFileList(files, {folderName:'Selected folder', onProgress:(n,t,name)=>{ if(n===1||n%5===0||n===t) toast(`Reading ${n}/${t}…`); }});
@@ -399,3 +441,5 @@ try{ if(typeof Migrate!=='undefined') Migrate.run(); }catch(e){ console.warn('tr
 
 // Detect AI (on-device or configured cloud). Brain works regardless.
 probeAI().then(updateChrome);
+// Surface whether a folder is already remembered (green dot on the Folder button).
+refreshFolderBadge();

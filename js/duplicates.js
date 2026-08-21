@@ -30,7 +30,8 @@
     return null;
   }
 
-  function detect(projectId){
+  function detect(projectId){ const m=M(); return (m&&m.memo)? m.memo(projectId,'dupes',()=>_detect(projectId)) : _detect(projectId); }
+  function _detect(projectId){
     const model=M(); if(!model||!model.getProject(projectId)) return {candidates:[]};
     const objs=model.listObjects(projectId).filter(o=>TYPES.indexOf(o.type)>=0);
     const candidates=[];

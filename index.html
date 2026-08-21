@@ -175,8 +175,12 @@ input[type=search]{min-width:230px}
   border-top-color:var(--accent);border-radius:50%;animation:s .7s linear infinite;display:inline-block}
 @keyframes s{to{transform:rotate(360deg)}}
 /* --- header controls / status --- */
-.hdr-controls{margin-left:auto;display:flex;gap:8px;align-items:center}
-.hdr-controls .btn.active{border-color:var(--accent);color:var(--txt)}
+.hdr-controls{margin-left:auto;display:flex;gap:6px;align-items:center}
+/* Clear active-workspace indication: the current mode is filled, not just outlined. */
+.hdr-controls .btn.active{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.hdr-sep{width:1px;align-self:stretch;background:var(--line);margin:2px 4px}
+#mode-folder.connected{border-color:var(--ok);color:var(--ok)}
+#mode-folder.connected::after{content:"•";margin-left:4px;color:var(--ok)}
 #ai-status{border-color:var(--line)}
 #ai-status.on{color:var(--ok);border-color:var(--ok)}
 #ai-status.off{color:var(--dim)}
@@ -351,12 +355,13 @@ input[type=search]{min-width:230px}
     <div class="sub">Detects the document type · maps content · builds a persistent brain · optional local AI</div>
   </div>
   <div class="hdr-controls">
-    <button class="btn ghost sm hidden" id="mode-doc">Document</button>
-    <button class="btn ghost sm hidden" id="mode-os">🏛 Analyst OS</button>
+    <button class="btn ghost sm hidden" id="mode-doc" title="Analyze a single document">Document</button>
+    <button class="btn ghost sm hidden" id="mode-os" title="The analyst workspace over your Project Truth Model">🏛 Analyst OS</button>
+    <button class="btn ghost sm hidden" id="mode-projects" title="Guided project builder">📁 Projects</button>
+    <button class="btn ghost sm hidden" id="mode-brain" title="Your persistent, cross-referenced knowledge vault">🧠 Brain</button>
+    <span class="hdr-sep" aria-hidden="true"></span>
     <button class="btn ghost sm hidden" id="mode-folder" title="Connect a local folder and auto-ingest every document into the Brain + Truth Model">📂 Folder</button>
-    <button class="btn ghost sm hidden" id="mode-projects">📁 Projects</button>
-    <button class="btn ghost sm hidden" id="mode-brain">🧠 Brain</button>
-    <button class="btn ghost sm hidden" id="settings-btn" title="AI settings">⚙︎</button>
+    <button class="btn ghost sm hidden" id="settings-btn" title="AI & Brain settings">⚙︎</button>
     <span class="pill" id="ai-status">Local only</span>
   </div>
   <span class="badge">100% LOCAL</span>
@@ -395,6 +400,12 @@ input[type=search]{min-width:230px}
   <div class="modal-box" style="width:min(820px,94vw)">
     <div class="modal-h"><strong>Compose a document from the brain</strong><button class="btn ghost sm" id="compose-close">✕</button></div>
     <div class="modal-body" id="compose-body"></div>
+  </div>
+</div>
+<div class="modal hidden" id="folder-modal">
+  <div class="modal-box">
+    <div class="modal-h"><strong>📂 Connect a folder</strong><button class="btn ghost sm" id="folder-close">✕</button></div>
+    <div class="modal-body" id="folder-body"></div>
   </div>
 </div>
 <div id="toast" class="toast hidden"></div>

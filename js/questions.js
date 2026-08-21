@@ -56,7 +56,8 @@
     return 'Affects: '+(bits.join(' · '));
   }
 
-  function generateQuestions(projectId){
+  function generateQuestions(projectId){ const m=M(); return (m&&m.memo)? m.memo(projectId,'questions',()=>_generateQuestions(projectId)) : _generateQuestions(projectId); }
+  function _generateQuestions(projectId){
     const model=M(); if(!model||!model.getProject(projectId)) return [];
     const out=[]; const seen=new Set(); let seq=0;
     // from gaps
