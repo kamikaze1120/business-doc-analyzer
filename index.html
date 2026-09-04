@@ -377,6 +377,7 @@ input[type=search]{min-width:230px}
   <div class="fileinfo hidden" id="fileinfo">
     <div><strong id="fname"></strong> <span class="dim mono" id="fmeta"></span></div>
     <button class="btn sm hidden" id="addbrain" style="margin-left:auto">＋ Add to Brain</button>
+    <button class="btn sm hidden" id="mockup-btn" title="Let the AI agents analyze this BRD and generate an interactive UI mockup">✨ Generate Mockup</button>
     <button class="btn ghost sm" id="reset">Load different file</button>
     <button class="btn sm" id="export">Export report</button>
     <button class="btn ghost sm" id="exportcsv">Test cases → CSV</button>
@@ -406,6 +407,19 @@ input[type=search]{min-width:230px}
   <div class="modal-box">
     <div class="modal-h"><strong>📂 Connect a folder</strong><button class="btn ghost sm" id="folder-close">✕</button></div>
     <div class="modal-body" id="folder-body"></div>
+  </div>
+</div>
+<div class="modal hidden" id="mockup-modal">
+  <div class="modal-box" style="width:min(1200px,96vw)">
+    <div class="modal-h">
+      <strong>✨ AI-generated mockup</strong>
+      <span style="margin-left:auto;display:flex;gap:8px">
+        <button class="btn ghost sm" id="mockup-open">Open in new tab</button>
+        <button class="btn ghost sm" id="mockup-download">⬇ Download .html</button>
+        <button class="btn ghost sm" id="mockup-close">✕</button>
+      </span>
+    </div>
+    <div class="modal-body" id="mockup-body" style="padding:0"></div>
   </div>
 </div>
 <div id="toast" class="toast hidden"></div>
@@ -472,6 +486,7 @@ input[type=search]{min-width:230px}
 <script src="js/projects.js"></script>
 <script src="js/osui.js"></script>
 <script src="js/folder.js"></script>
+<script src="js/mockup.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
