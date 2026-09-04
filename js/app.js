@@ -366,6 +366,7 @@ async function generateMockup(){
 }
 
 function showMockup(r){
+  LAST_MOCKUP = r;   // so Download / Open-in-tab work for any caller (Document view or Analyst OS)
   const modal=E('mockup-modal'), body=E('mockup-body'); if(!modal||!body) return;
   const frame=document.createElement('iframe');
   frame.setAttribute('sandbox','allow-scripts allow-modals');    // no same-origin: the mockup can't touch this app

@@ -202,12 +202,38 @@ Rules: 3-4 roles (at least one submitter and one approver). 2-4 pipeline stages.
 </body></html>`;
   }
 
+  /* ---------- context from a Truth-Model project (Analyst OS path) ---------- */
+  const REQ_TYPES = ['functional_requirement','non_functional_requirement','business_requirement','integration_requirement','data_requirement','reporting_requirement'];
+  function contextFromProject(projectId, model){
+    model = model || root.Model;
+    if(!model || !model.getProject(projectId)) return null;
+    const p = model.getProject(projectId);
+    const objs = model.listObjects(projectId);
+    const byType = t => objs.filter(o=>o.type===t);
+    const titles = (t,n)=> byType(t).slice(0,n).map(o=> (o.title||o.description||'')).filter(Boolean);
+    const catFor = t => t==='non_functional_requirement'?'NFR':t==='integration_requirement'?'INT':t==='business_requirement'?'BR':'FR';
+    const requirements = objs.filter(o=>REQ_TYPES.indexOf(o.type)>=0).slice(0,40)
+      .map(o=>({ text:((o.description||o.title)||'').slice(0,240), cat:catFor(o.type) })).filter(r=>r.text);
+    return {
+      title: (p.meta && p.meta.project) || p.name || 'Business Application',
+      docType: 'Project Truth Model',
+      objectives: titles('business_objective', 8),
+      stakeholders: titles('stakeholder', 12),
+      personas: titles('persona', 8),
+      actors: titles('actor', 10),
+      features: titles('user_story', 8).concat(titles('use_case', 4)).slice(0,12),
+      dataFields: titles('data_entity', 12).concat(titles('data_field', 12)).slice(0,20),
+      requirements,
+      metrics: titles('metric', 6).concat(titles('kpi', 4)).slice(0,8)
+    };
+  }
+
   /* ---------- orchestration (AI required) ---------- */
   async function generate(state, opts){
     opts = opts||{};
     const llm = opts.llm;
     if(typeof llm!=='function') throw new Error('The mockup generator requires AI — enable an AI provider in Settings first.');
-    const ctx = buildContext(state);
+    const ctx = opts.context || buildContext(state);
     let raw=null;
     try{ raw = await llm(promptFor(ctx), {temperature:0.35, format:'json', system:'You are a precise business analyst. Return only valid JSON matching the requested shape.'}); }
     catch(e){ throw new Error('The AI could not produce a mockup: '+(e.message||e)); }
@@ -215,7 +241,7 @@ Rules: 3-4 roles (at least one submitter and one approver). 2-4 pipeline stages.
     return { spec, html: renderHTML(spec), context: ctx, usedFallback: !raw };
   }
 
-  const Mockup = { buildContext, promptFor, coerceSpec, renderHTML, generate, KNOWN_PAGES, TONES };
+  const Mockup = { buildContext, contextFromProject, promptFor, coerceSpec, renderHTML, generate, KNOWN_PAGES, TONES };
   root.Mockup = Mockup;
   if(typeof module!=='undefined' && module.exports) module.exports = Mockup;
 
