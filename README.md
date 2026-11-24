@@ -1,195 +1,279 @@
-# Business Document Analyzer — AI Business Analyst Operating System
+<div align="center">
 
-**Runs entirely in your browser. No install, no Node, no server. Your documents never leave your machine.**
+<img src="./.github/readme/hero.svg" width="100%" alt="Business Document Analyzer — a scanned document stack feeding requirement and test chips into a knowledge graph" />
 
-Drop in a business document a BRD, PRD, project charter, requirements spec, process doc, spreadsheet and it detects the type, maps the content, extracts requirements, generates test cases, scores quality, and builds a persistent, cross-referencing knowledge base.
+<img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&amp;weight=600&amp;size=18&amp;duration=2600&amp;pause=700&amp;color=F4C65A&amp;center=true&amp;vCenter=true&amp;width=850&amp;height=42&amp;lines=Drop+in+a+BRD.+Get+requirements%2C+tests+and+gaps.;The+model+is+the+truth.+Documents+are+generated+from+it.;Runs+in+your+browser.+Nothing+is+uploaded.;AI+is+optional+%E2%80%94+and+never+auto-approved." alt="Typing summary of Business Document Analyzer" />
 
-But it is no longer just a document tool. Underneath sits a **Project Truth Model** a single, canonical source of truth for a project and documents are *generated representations* of that model. The system behaves like an experienced Business Analyst: it ingests fragmented information (documents, notes, manual entry), structures it into a knowledge graph with full provenance, detects gaps and contradictions, asks the highest-impact clarifying questions, proposes requirements and tests, generates a whole ecosystem of interconnected documentation, and keeps everything traceable and fresh as things change.
+<p>
+  <a href="https://kamikaze1120.github.io/business-doc-analyzer/"><img src="https://img.shields.io/badge/%E2%96%B6%20LIVE%20DEMO-open%20in%20your%20browser-4FE3A6?style=for-the-badge&amp;labelColor=15103A" alt="Live demo" /></a>
+</p>
+<p>
+  <a href="https://github.com/kamikaze1120/business-doc-analyzer/commits/main"><img src="https://img.shields.io/github/last-commit/kamikaze1120/business-doc-analyzer?style=for-the-badge&amp;labelColor=15103A&amp;color=F4C65A" alt="Last commit" /></a>
+  <img src="https://img.shields.io/github/languages/top/kamikaze1120/business-doc-analyzer?style=for-the-badge&amp;labelColor=15103A&amp;color=BD3CFF" alt="Top language" />
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/kamikaze1120/business-doc-analyzer?style=for-the-badge&amp;labelColor=15103A&amp;color=B17A23" alt="License: MIT" /></a>
+  <img src="https://img.shields.io/badge/build%20step-none-8d22ff?style=for-the-badge&amp;labelColor=15103A" alt="No build step" />
+</p>
 
-> 100% local · works offline · optional pluggable AI · the model is the source of truth, documents are generated from it
+</div>
 
----
+Drop in a business document — a BRD, PRD, project charter, requirements spec, process doc, or spreadsheet — and it detects the type, extracts requirements, generates test cases, scores quality, and builds a persistent, cross-referencing knowledge base. Underneath sits a **Project Truth Model**: one canonical, provenance-tracked model of the project, from which every document is *generated*. It all runs client-side, in plain HTML and vanilla JavaScript.
 
-## Quick start
+<p align="center"><sub><code>BUSINESS ANALYSIS</code> ✦ <code>REQUIREMENTS</code> ✦ <code>TRACEABILITY</code> ✦ <code>LOCAL-FIRST</code> ✦ <code>OPTIONAL AI</code></sub></p>
 
-**Option A — just open it.** Double-click `index.html`. That's it. It works offline. Drop in a `.docx` / `.xlsx` / `.csv` / `.txt` / `.md` / `.pdf` and it analyzes it.
+<h2 align="center">✦ WHAT IT DOES ✦</h2>
+<p align="center"><sub>FROM ONE DOCUMENT TO A LIVING PROJECT MODEL</sub></p>
 
-**Option B — host it (recommended).** Serving the static files from a URL gives the browser more room to persist data reliably and run on-device AI. You do **not** need to run anything — just host the static files anywhere you're allowed to:
+<table>
+<tr>
+<td width="33%" valign="top">
 
-- **GitHub Pages** (free): `https://<you>.github.io/business-doc-analyzer`
-- Any internal/company static host or intranet path.
+📄 **Document analysis**<br/>
+<sub>Classifies BRD/SRS, PRD, Charter, Agile backlog, process doc or generic, then extracts FR / NFR / integration / business-rule requirements as actor · action · object.</sub>
 
-Same app, same data model — a URL just removes the minor restrictions browsers place on `file://` pages.
+</td>
+<td width="33%" valign="top">
 
----
+🧪 **Test cases**<br/>
+<sub>Generated from each requirement with steps, preconditions, expected results and traceability — exportable to CSV.</sub>
 
-## 🏛 Analyst OS — the Project Truth Model
+</td>
+<td width="33%" valign="top">
 
-Open the **🏛 Analyst OS** tab for the workspace built on the canonical model. The principle:
+🧠 **The Brain**<br/>
+<sub>Add documents to a persistent, Obsidian-style graph; shared entities cross-reference across every document. Export / import as JSON.</sub>
 
-> **The Project Truth Model is the single source of truth. Documents are generated representations of that model.**
+</td>
+</tr>
+<tr>
+<td valign="top">
 
-The flow the system follows:
+🏛 **Analyst OS**<br/>
+<sub>Workspace over the Truth Model: immutable ids, lifecycle, version history, and provenance on every object.</sub>
 
+</td>
+<td valign="top">
+
+🔍 **Gaps & conflicts**<br/>
+<sub>Rule-registry gap detection, conflict categories with a resolution lifecycle, and layered duplicate detection that never auto-merges.</sub>
+
+</td>
+<td valign="top">
+
+❓ **Clarify loop**<br/>
+<sub>Impact-ranked question queue; answers write back into the model as provenance-tagged evidence.</sub>
+
+</td>
+</tr>
+<tr>
+<td valign="top">
+
+🏭 **Document Factory**<br/>
+<sub>Generate BRD, FRD, PRD, Charter, RTM, Test Plan, RAID Log or Stakeholder Register from the model — each stays linked to its sources.</sub>
+
+</td>
+<td valign="top">
+
+🌊 **Change impact**<br/>
+<sub>Direct/indirect impact with paths; generated docs flagged <i>Needs Review</i> only when a source version advances. Snapshots, diff, rollback.</sub>
+
+</td>
+<td valign="top">
+
+📁 **Guided projects**<br/>
+<sub>Section-by-section interview for a BRD, PRD or Charter; resume any time, then generate a full document as <code>.md</code>.</sub>
+
+</td>
+</tr>
+<tr>
+<td valign="top">
+
+📂 **Folder Connect**<br/>
+<sub>Pick a local folder once; supported files are ingested into the Brain and Truth Model. Chrome/Edge over https can re-scan later.</sub>
+
+</td>
+<td valign="top">
+
+✨ **Mockup generator**<br/>
+<sub>With AI on: turns an analyzed BRD into a clickable HTML prototype. The AI returns a typed app-model; a fixed template renders it.</sub>
+
+</td>
+<td valign="top">
+
+❤️ **Health dashboard**<br/>
+<sub>One explainable readiness score — every deduction itemized — plus objective → requirement → acceptance → test coverage.</sub>
+
+</td>
+</tr>
+</table>
+
+<h2 align="center">◈ HOW IT FLOWS ◈</h2>
+<p align="center"><sub>THE MODEL IS THE SOURCE OF TRUTH · DOCUMENTS ARE GENERATED FROM IT</sub></p>
+
+```mermaid
+flowchart LR
+    IN["Inputs<br/>.docx · .xlsx · .csv · .pdf · .md · .txt<br/>notes · guided interview · folder"]:::in --> EX["Ingestion + extraction<br/>doctype · semantic · elements"]:::eng
+    EX --> PTM[("Project Truth Model<br/>immutable ids · provenance<br/>versions · relationships")]:::core
+    PTM --> AN["Gap · conflict · duplicate<br/>detection"]:::eng
+    AN --> Q["Clarification queue"]:::eng
+    Q -- "answers as evidence" --> PTM
+    PTM --> F["Document Factory<br/>BRD · FRD · PRD · RTM · RAID…"]:::out
+    PTM --> IMP["Change impact<br/>freshness · traceability · health"]:::out
+    AI["Optional LLM<br/>proposals only"]:::ai -. "schema-validated<br/>ai_proposed" .-> PTM
+
+    classDef in fill:#15103A,stroke:#F4C65A,color:#fff0b7
+    classDef eng fill:#071331,stroke:#BD3CFF,color:#f0d7ff
+    classDef core fill:#13052d,stroke:#F4C65A,color:#ffe293
+    classDef out fill:#04061d,stroke:#4FE3A6,color:#c9ffe8
+    classDef ai fill:#020317,stroke:#8d22ff,color:#dcc9ff,stroke-dasharray: 5 5
 ```
-MULTIPLE INPUT SOURCES  →  INGESTION + EXTRACTION  →  NORMALIZATION
-   →  PROJECT TRUTH MODEL  →  VALIDATION + GAP DETECTION  →  CLARIFICATION LOOP
-   →  CONFLICT RESOLUTION  →  TRACEABILITY ENGINE  →  DOCUMENT FACTORY
-   →  GENERATED DOCUMENTATION  →  CHANGE-IMPACT ANALYSIS  →  CONTINUOUS KNOWLEDGE
+
+**Deterministic first.** Everything above works with no AI at all. Every object distinguishes a *Confirmed Fact*, *Stakeholder Statement*, *AI Inference*, *Assumption*, *Open Question* and *Conflict*; AI output is checked against typed schemas ([`js/aischema.js`](js/aischema.js)) before it can create anything, is labelled `ai_proposed`, and is never auto-approved — you **Accept / Edit / Reject**.
+
+<details>
+<summary><b>Architecture integrity — the hardening work</b></summary>
+
+<br/>
+
+Evidence and rationale: [`ARCHITECTURE_AUDIT.md`](ARCHITECTURE_AUDIT.md) (audit) and [`IMPLEMENTATION_REPORT.md`](IMPLEMENTATION_REPORT.md) (what was fixed and why).
+
+- **Relationship registry + inverse-aware traversal** ([`relationships.js`](js/relationships.js)) — every edge is validated against allowed source/target types, and analysis can follow a link in either stored direction.
+- **Central mutation facade** ([`mutate.js`](js/mutate.js)) — update → version history → change impact → document freshness → health delta → structured result.
+- **Versioned export/import** ([`portability.js`](js/portability.js)) — imports are treated as untrusted: schema/type/relationship validation, prototype-pollution guard, backup-before-apply, id-collision handling. Imported content is never executed.
+- **Rule registries + scope-awareness** ([`gaps.js`](js/gaps.js)) — mark an aspect out of scope and its gap rules stop penalizing the project.
+- **Layered duplicates** ([`duplicates.js`](js/duplicates.js)) — exact / strong / possible layers with a recommended action; merges are explicit and provenance-recorded.
+- **Explainable impact & traceability** ([`impact.js`](js/impact.js), [`traceability.js`](js/traceability.js)) — direct vs. indirect impact with the path that caused it; per-hop and full-chain coverage on the dashboard.
+
+The test harnesses described in the implementation report are kept outside this repository — the repo ships the app only.
+
+</details>
+
+<h2 align="center">◆ QUICK START ◆</h2>
+<p align="center"><sub>NO INSTALL · NO BUILD · NO SERVER REQUIRED</sub></p>
+
+| | How | Notes |
+|---|---|---|
+| **A · Open it** | Double-click `index.html` | Works offline from `file://` |
+| **B · Use the hosted copy** | [kamikaze1120.github.io/business-doc-analyzer](https://kamikaze1120.github.io/business-doc-analyzer/) | Or host the folder on any static host — a real URL lifts browser limits on storage, Folder Connect re-scan, and in-browser AI |
+| **C · Optional Node server** | `node server.js` → `http://localhost:7332` | Standard library only. Serves the app, proxies a local Ollama, and keeps an on-disk brain vault in `brain/` (gitignored) |
+
+```bash
+git clone https://github.com/kamikaze1120/business-doc-analyzer.git
+cd business-doc-analyzer
+# then either open index.html, or:
+node server.js        # optional — PORT, OLLAMA_URL, OLLAMA_MODEL env vars are honoured
 ```
 
-What that gives you:
+**Supported files:** `.docx` (tables preserved) · `.xlsx` / `.xls` · `.csv` · `.txt` · `.md` · `.pdf` — parsed in the browser by the bundled mammoth, SheetJS and pdf.js in [`lib/`](lib/).
 
-- **A canonical knowledge graph.** Every objective, requirement, business rule, stakeholder, system, process step, risk, test, and document is a structured object with an **immutable id** (never derived from a title or position), a separate generated display id (`FR-001`), lifecycle status, and version history.
-- **Provenance on everything.** Each object answers *"where did this come from?"* — the source document, line, speaker, extraction method, and confidence. The system always distinguishes a **Confirmed Fact**, a **Stakeholder Statement**, an **AI Inference**, an **Assumption**, an **Open Question**, and a **Conflict**. AI-proposed content is labelled `ai_proposed` and never masquerades as confirmed.
-- **Requirement intelligence.** Every requirement is scored for clarity, completeness, testability, atomicity, ambiguity, and measurability — and for vague terms like *"secure"* or *"fast"* it explains exactly what is undefined and which questions would close the gap.
-- **Gap, conflict & duplicate detection.** Structural, semantic, and cross-artifact gaps; contradictions, duplicate rules, and conflicting approval thresholds — recorded with an explicit lifecycle (detected → under review → resolution proposed → approved → resolved). Conflicts are never silently resolved.
-- **Impact-prioritized clarification.** Gaps and conflicts become a ranked question queue (by downstream dependency count, conflict weight, and risk). Answers write back into the model as provenance-tagged evidence.
-- **Change impact & freshness.** Change any object and the system shows every downstream acceptance criterion, test, and document affected, and marks generated documents **Needs Review** — never silently stale. Project snapshots support diff, change summaries, and reversible rollback.
-- **Document Factory.** Generate a BRD, FRD, PRD, Charter, Requirements Traceability Matrix, Test Plan, RAID Log, or Stakeholder Register **from the model** — each keeps references to the objects that produced it, so it stays live.
-- **Autonomous BA workflow + specialized agents.** Start from a plain-language idea; a Discovery agent extracts candidate objectives/stakeholders/systems, then Requirements, Test Designer, Quality, Conflict, Gap, Document, and Consistency agents propose the rest — all as reviewable proposals over the one model. You **Accept / Edit / Reject**; nothing is auto-approved. With no AI the agents use rule-based extraction; when an LLM is configured they additionally ask it for richer, more specific proposals (several classified requirements per objective, Given/When/Then acceptance criteria with positive/negative/boundary tests, and rewrite suggestions for vague requirements) — each carrying the model's confidence and marked as an AI proposal, never a confirmed fact.
-- **Health dashboard.** One explainable readiness score with requirement / traceability / documentation / risk metrics, where every deduction is itemized so the number is never a black box.
+<h2 align="center">✦ AI, IF YOU WANT IT ✦</h2>
+<p align="center"><sub>OFF BY DEFAULT · SETTINGS ⚙︎ · KEYS STAY IN YOUR BROWSER</sub></p>
 
-Everything above is **deterministic first** — it works with no AI at all — and the pluggable LLM enriches it when configured.
+<table>
+<tr>
+<td width="25%" valign="top">
 
-### Architecture integrity (hardening)
+💻 **On-device**<br/>
+<sub>Chrome/Edge built-in model (<code>window.LanguageModel</code>). No key, nothing leaves the machine.</sub>
 
-The model layer is built to stay internally consistent and trustworthy — see [`ARCHITECTURE_AUDIT.md`](ARCHITECTURE_AUDIT.md) (evidence-based audit) and [`IMPLEMENTATION_REPORT.md`](IMPLEMENTATION_REPORT.md) (what was fixed, tested, and why):
+</td>
+<td width="25%" valign="top">
 
-- **Relationship registry + inverse-aware traversal** — a canonical contract (source/target types, inverse names) validates every edge and lets analysis follow a link in either stored direction, so traceability and gap/impact analysis can't silently break on edge direction.
-- **Centralized mutation facade** — object changes flow through one path: update → version history → change-impact → document freshness → project-health delta → a structured result.
-- **Versioned export/import** — back up or move a project as a self-describing package; imports are treated as **untrusted** (schema + type + relationship validation, prototype-pollution guard, backup-before-apply, id-collision handling). No imported content is executed.
-- **Rule registries + scope-awareness** — gap detection is a declarative registry; a project can mark aspects out of scope (e.g. testing) so it isn't penalized for artifacts it doesn't need.
-- **Layered duplicate & conflict detection** — exact / strong / possible duplicate layers with confidence and a recommended action (explicit merge only, never automatic); conflicts include priority/status/date categories and a `dismissed` lifecycle that requires a reason and preserves evidence.
-- **Validated AI output** — every LLM proposal is checked against a typed schema before it can create anything; invalid/malformed output is dropped (with secret-free diagnostics) and the agent falls back to its deterministic path. AI proposals are always `ai_proposed` and never auto-approved.
-- **Explainable impact + version-keyed freshness + traceability** — each impacted object is labelled direct/indirect with the path that made it impacted; a generated document is flagged "needs review" only when one of *its* sources' versions actually advances; and objective→requirement→acceptance→test coverage is reported on the dashboard.
+🧩 **In-browser (WebLLM)**<br/>
+<sub>Qwen2.5, Llama 3.2 or Phi-3.5 mini via WebGPU. One-time model download, then runs locally.</sub>
 
-The whole data layer is deterministic, dependency-free, and covered by 21 headless Node test suites (300+ assertions) plus browser regression suites.
+</td>
+<td width="25%" valign="top">
 
----
+🔌 **OpenAI-compatible**<br/>
+<sub>Presets for Ollama (local), Groq, OpenRouter and Google Gemini — paste your own key — or any custom endpoint.</sub>
 
-## What it does
+</td>
+<td width="25%" valign="top">
 
-### 📄 Document analysis
-Detects the document type (BRD/SRS, PRD, Project Charter, Agile backlog, process doc, or generic) and adapts its views to match. For each document it extracts:
+🅰️ **Anthropic**<br/>
+<sub>An approved Anthropic endpoint + key.</sub>
 
-- **Requirements** classified as Functional / Non-Functional / Integration / Business Rule, each decomposed into actor · action · object.
-- **Test cases** generated from those requirements, with steps, preconditions, expected results, and traceability — exportable to CSV.
-- **Elements**: objectives, scope (in/out), stakeholders, milestones, risks, personas, features, metrics, user stories.
-- **Quality score + gap findings** so you can see what's missing or ambiguous.
+</td>
+</tr>
+</table>
 
-### 🧠 The Brain (persistent, cross-referencing)
-Click **＋ Add to Brain** after analyzing a document. Everything is stored in your browser and shared entities start cross-referencing across every document you add — *"Business Analyst appears in 3 documents"*, *"Billing API is referenced by 2 charters"*. Open the **🧠 Brain** tab to browse an Obsidian-style graph of documents and entities, filter it, and follow the links.
+No API key ships with the app. Ollama can't run *on* a static host like GitHub Pages — use WebLLM there, or point the preset at an Ollama server elsewhere on your network.
 
-The brain lives in this browser's local storage, so it persists between sessions. Back it up or move it with **Settings (⚙︎) → Export brain / Import brain** (a `.json` file).
+<h2 align="center">◈ TECH STACK ◈</h2>
+<p align="center"><sub>PLAIN HTML + VANILLA JS · CLASSIC SCRIPT TAGS</sub></p>
 
-### 📁 Projects — guided document builder
-Pick a document type (BRD, PRD, or Project Charter) and the system **interviews you section by section**. Each project gets its own workspace with separated sub-tabs:
+<p align="center">
+  <img src="https://skillicons.dev/icons?i=html,css,js,nodejs&amp;theme=dark" alt="HTML, CSS, JavaScript, Node.js" />
+</p>
 
-- **Setup** → the document header (name, version, author, department, date).
-- **General Idea** → a few sentences of purpose; everything else builds from this.
-- **Per-section tabs** → Functional, Non-Functional, Integration, Business Rules, Scope, Stakeholders, Risks (adapt to the type). Each shows a ✓ once it has content.
-- **Review & Generate** → a completeness check, then one click assembles a complete document and runs the full engine over it — requirements, test cases, traceability, and gap analysis. Download as `.md`.
+<p align="center"><sub>Parsers: mammoth (.docx) · SheetJS (.xlsx) · pdf.js · Optional: WebLLM (loaded on demand) · Node.js standard library for <code>server.js</code></sub></p>
 
-Projects **persist** — you don't need all the answers at once; come back and keep filling it in. It prefills hints from the brain (known systems, known roles), and when an LLM is configured it can suggest items per section or draft the whole thing from your idea.
+<details>
+<summary><b>Project layout</b></summary>
 
-### ❓ Clarify — the living document
-Every document gets a **Clarify** tab of open questions. Answer one and it's written back *into* the document:
+<br/>
 
-- BRD / SRS / PRD → a new requirement (FR / NFR / INT / BR) that flows straight into Test Cases, Traceability, and the score.
-- Charter / plan / process → a recorded clarification note.
-
-Answers are saved to the brain and reload next time you open that document, so it grows over time instead of resetting.
-
-### 🛠 Compose from the brain
-Generate cross-document artifacts from everything the brain knows — Project Brief, Stakeholder Register, Risk Register, Requirements Traceability Matrix, Test Plan, Systems Inventory, RACI, Timeline, and a Duplicate-Requirement report.
-
----
-
-## AI (optional — turn on in Settings ⚙︎)
-
-AI is **off** until you pick a provider. It's never required — everything except the AI-specific helpers works without it. Options:
-
-1. **On-device browser AI (Auto)** — Chrome/Edge's built-in model (Gemini Nano), if available. Smallest and instant; no download, nothing leaves your machine.
-2. **In-browser model (WebLLM)** — runs a real open model (Qwen2.5 / Llama 3.2) inside your browser via WebGPU. No API key, no install. First use downloads the model (~1–2 GB) and caches it; afterward it runs locally, even offline. Needs a recent Chrome/Edge with WebGPU. This is the browser-native equivalent of Ollama and works on a hosted (GitHub Pages) site.
-3. **OpenAI-compatible / Ollama (with one-click presets)** — point it at an endpoint + key. Settings now ships **provider presets** that prefill the endpoint + model so you only paste your own free key: **Ollama** (local, no key needed), **Groq**, **OpenRouter** (free `:free` models), and **Google Gemini** — all free to sign up for. Choose **Custom** for any other OpenAI-compatible endpoint or an internal Ollama server. No API key is shipped in the app — a shared key would be scraped and revoked within hours, so the honest "works after a ~30-second signup" path is a preset plus your own free key.
-4. **Anthropic** — an approved Claude endpoint + key.
-
-Keys are stored **only in this browser** and called directly from your machine.
-
-> **Note:** Ollama itself can't run *on* GitHub Pages (or any static host) — it needs a server process. Option 2 (WebLLM) gives you the same "small local model" experience with no server, or use Option 3 to reach an Ollama server that runs elsewhere on your network.
-
----
-
-## Supported file types
-
-`.docx` (tables preserved) · `.xlsx` / `.xls` · `.csv` · `.txt` · `.md` · `.pdf`
-
----
-
-## Project layout
-
-```
-index.html        The app — open this.
-lib/              Document parsers: mammoth (.docx), SheetJS (.xlsx), pdf.js.
+```text
+index.html          The app — open this.
+server.js           OPTIONAL Node server (std-lib only): app + Ollama proxy + on-disk brain vault
+lib/                mammoth.js · xlsx.min.js · pdf.min.js · pdf.worker.min.js
 js/
   — Analysis engine —
-  semantic.js     Rule-based NLP: decomposes a requirement into parts.
-  generate.js     Builds test steps from that meaning.
-  quality.js      Quality scoring + gap findings.
-  extract.js      Requirements, sections, flow, scenarios, tests.
-  elements.js     Universal extractors (objectives, scope, stakeholders, …).
-  doctypes.js     Document-type classifier + per-type views.
-  — Canonical data layer (Project Truth Model) —
-  uid.js          Immutable UUID identity for every object.
-  storage.js      Storage abstraction (Local / Memory / IndexedDB providers).
-  model.js        The Project Truth Model: objects, display ids, lifecycle,
-                  evidence, relationships, versioning, approval guard.
-  migrate.js      Non-destructive migration of existing projects into the model.
-  ingest.js       Maps an analyzed document into model objects with evidence.
-  provenance.js   Trust/status/origin badges + the evidence panel.
-  intelligence.js Requirement quality engine (clarity/testability/ambiguity…).
-  gaps.js         Multi-layer gap detection (structural/semantic/cross-artifact).
-  conflicts.js    Conflict/duplicate detection with a resolution lifecycle.
-  questions.js    Impact-prioritized clarification queue + answer write-back.
-  impact.js       Change-impact engine + document freshness.
-  versioning.js   Project snapshots, diff, change summaries, rollback.
-  factory.js      Document Factory — generates documents from the model.
-  health.js       Explainable project readiness score + metrics.
-  agents.js       Specialized BA agents (discovery, requirements, tests, …).
-  workflow.js     Autonomous BA workflow orchestrating the agents.
-  osui.js         The 🏛 Analyst OS workspace (dashboard, inspector, docs).
-  — Brain, AI, and document views —
-  store.js        The brain — persists in the browser (localStorage).
-  llm.js          Pluggable AI: on-device model or approved cloud endpoint.
-  brain.js        Builds the vault payload; brain API.
-  graph.js        Obsidian-style brain graph.
-  brain_ui.js     The 🧠 Brain view.
-  compose.js      Compose documents from the brain.
-  knowledge.js    Cross-references each document against the brain.
-  render.js       Document views (tabs) + shared helpers.
-  flow.js         Persona swimlanes / process flow.
-  ai.js           The ✨ AI Insights tab.
-  qa.js           The ❓ Clarify (living-document) tab.
-  projects.js     The 📁 Projects guided builder.
-  app.js          Orchestration, adaptive tabs, file loading, wiring.
-server.js         OPTIONAL local http server (needs Node) — not required.
+  semantic.js       Rule-based NLP: decomposes a requirement into parts
+  generate.js       Builds test steps from that meaning
+  quality.js        Quality scoring + gap findings
+  extract.js        Requirements, sections, flow, scenarios, tests
+  elements.js       Objectives, scope, stakeholders, milestones, risks…
+  doctypes.js       Document-type classifier + per-type views
+  — Project Truth Model —
+  uid.js            Immutable UUID identity
+  storage.js        Storage abstraction (Local / Memory / IndexedDB)
+  model.js          Objects, display ids, lifecycle, evidence, versioning
+  relationships.js  Relationship registry + inverse-aware traversal
+  mutate.js         Central mutation facade
+  migrate.js        Non-destructive migration into the model
+  ingest.js         Analyzed document → model objects with evidence
+  provenance.js     Trust/status/origin badges + evidence panel
+  intelligence.js   Requirement quality engine
+  gaps.js           Gap rule registry + scope-awareness
+  conflicts.js      Conflict detection + resolution lifecycle
+  duplicates.js     Layered duplicate detection (explicit merge only)
+  questions.js      Impact-prioritized clarification queue
+  impact.js         Change impact + document freshness
+  traceability.js   Objective → requirement → acceptance → test coverage
+  versioning.js     Snapshots, diff, rollback
+  portability.js    Versioned, untrusted-safe export/import
+  factory.js        Document Factory
+  health.js         Explainable readiness score
+  aischema.js       Typed AI proposal schemas (validate before mutate)
+  agents.js         Specialized BA agents
+  workflow.js       Autonomous BA workflow
+  osui.js           🏛 Analyst OS workspace
+  — Brain, AI, views —
+  store.js · brain.js · graph.js · brain_ui.js · knowledge.js · compose.js
+  llm.js · ai.js · qa.js · projects.js · folder.js · mockup.js
+  render.js · flow.js · app.js
 ```
 
-No build step. It's plain HTML + vanilla JavaScript loaded with classic `<script>` tags, so you can open `index.html` directly or host the folder as-is. The data layer (`uid` → `workflow`) is deterministic and dependency-free, and is covered by headless Node test suites.
+</details>
 
----
+<h2 align="center">◆ PRIVACY ◆</h2>
 
-## Privacy
+Documents are parsed in the browser and the brain lives in browser storage — nothing is uploaded. If you turn on a cloud AI endpoint, only the text sent to that AI helper leaves your machine, and only to the endpoint you configured.
 
-Everything runs client-side. Documents are parsed in the browser, the brain lives in local storage, and nothing is uploaded. If you enable a cloud AI endpoint, only the text you send to that AI helper leaves your machine — and only to the endpoint you configured.
+<h2 align="center">✦ CONTRIBUTING & LICENSE ✦</h2>
 
----
+<p align="center">
+Issues and PRs welcome — see <a href="CONTRIBUTING.md">CONTRIBUTING.md</a>, the <a href="CODE_OF_CONDUCT.md">Code of Conduct</a>, and <a href="SECURITY.md">SECURITY.md</a> for reporting security concerns.<br/>
+Released under the <a href="LICENSE">MIT License</a>.
+</p>
 
-## Contributing
+<br/>
 
-Issues and pull requests are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md). To report a security concern, see [SECURITY.md](SECURITY.md).
+<div align="center">
 
-## License
+<img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&amp;weight=500&amp;size=14&amp;duration=3200&amp;pause=900&amp;color=4FE3A6&amp;center=true&amp;vCenter=true&amp;width=560&amp;height=30&amp;lines=Fragmented+documents+in.+One+traceable+truth+out." alt="Fragmented documents in. One traceable truth out." />
 
-[MIT](LICENSE) © Mujtaba Mohammed
+<sub><code>◉ BUSINESS-DOC-ANALYZER // GILDED ORBIT</code> · <a href="https://github.com/kamikaze1120">github.com/kamikaze1120</a></sub>
+
+</div>
